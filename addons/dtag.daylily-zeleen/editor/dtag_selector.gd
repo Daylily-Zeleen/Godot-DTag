@@ -104,6 +104,10 @@ func setup(tag: StringName, domain: PackedStringArray, select_tag: bool) -> void
 						color = _REDIRECTED_DISABLED_COLOR
 					item.set_custom_color(0, color)
 					item.set_text(0, item.get_text(0) + "[Deprecated]")
+
+				if not _domain_limitation.is_empty():
+					# 过滤命名空间限制
+					item.free()
 			elif def is Script:
 				if not def.is_abstract():
 					continue
@@ -139,8 +143,6 @@ func setup(tag: StringName, domain: PackedStringArray, select_tag: bool) -> void
 				if item.get_child_count() <= 0 and not _domain_limitation.is_empty() and (not _domain_limitation.begins_with(k + ".") and not _domain_limitation.begins_with(redirect + ".")):
 					# 过滤命名空间限制
 					item.free()
-				
-
 
 	_on_search_text_changed(_search_line_edit.text)
 	popup_centered_ratio(0.6)
