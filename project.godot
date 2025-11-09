@@ -8,10 +8,6 @@
 
 config_version=5
 
-[DTag]
-
-basic/code_generators=PackedStringArray("")
-
 [application]
 
 config/name="Godot-DTag"

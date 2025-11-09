@@ -1,10 +1,10 @@
-# Use "@" as prefix of tag domain.
-# Use indent to define level.
-# Use "->" to redirect a tag to a specific StringName.
-# Use "#" to normal comment.
-# Use "##" to define comment of specific item (tag or tag domain).
-# Tag and tag domain should be a valid identifier.
-# Tag should be defined before sub-domain.
+# Use "@" as the prefix for tag Domain.
+# Use tabs to define hierarchy.
+# Use "->" for redirection.
+# Use "#" for comments.
+# Use "##" for comments on specific domains or tags.
+# Tags and Tag Domains must be valid identifiers.
+# Child Domains must be defined after the parent Domain's Tags.
 #
 # Syntax: Content of "[]" are optional.
 # [@]DomainOrTag [-> Redirect.To.New.DomainOrTag] [## Any comment of this domain or Tag]
