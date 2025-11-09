@@ -1,6 +1,10 @@
 @tool
 extends ConfirmationDialog
 
+const _DISABLED_COLOR := Color.DIM_GRAY
+const _REDIRECTED_COLOR := Color.DARK_ORANGE
+const _REDIRECTED_DISABLED_COLOR := Color.CHOCOLATE
+
 signal selected(tag_or_domain: StringName, confirm: bool)
 
 const CACHE_FILE := "res://.godot/editor/dtag_cache.cfg"
@@ -74,32 +78,69 @@ func setup(tag: StringName, domain: PackedStringArray, select_tag: bool) -> void
 				continue
 
 			var def: Variant = const_map[k]
-			if not def is Dictionary:
-				continue
+			if def is StringName:
+				var redirect := _get_cache_redirect(k, "")
+				var item := root.create_child()
+				item.set_auto_translate_mode(0, Node.AUTO_TRANSLATE_MODE_DISABLED)
+				item.set_auto_translate_mode(1, Node.AUTO_TRANSLATE_MODE_DISABLED)
+				item.set_text(0, k)
+				item.set_metadata(0, _get_cache_redirect(k, k))
+				item.set_tooltip_text(0, _get_cache_desc(k, k))
 
-			var redirect := _get_cache_redirect(k, "")
+				item.set_text(1, redirect)
+				item.set_tooltip_text(1, redirect)
+				item.set_custom_color(1, Color.DARK_GRAY)
+				item.set_selectable(1, not redirect.is_empty())
+				item.set_metadata(1, redirect)
 
-			var item := root.create_child()
-			item.set_auto_translate_mode(0, Node.AUTO_TRANSLATE_MODE_DISABLED)
-			item.set_auto_translate_mode(1, Node.AUTO_TRANSLATE_MODE_DISABLED)
-			item.set_text(0, k)
-			item.set_metadata(0, _get_cache_redirect(k, k))
-			item.set_tooltip_text(0, _get_cache_desc(k, k))
+				if not _select_tag:
+					item.set_selectable(0, false)
+					item.set_selectable(1, false)
+					item.set_custom_color(0, _DISABLED_COLOR)
 
-			item.set_text(1, redirect)
-			item.set_tooltip_text(1, redirect)
-			item.set_custom_color(1, Color.DARK_GRAY)
-			item.set_selectable(1, not redirect.is_empty())
-			item.set_metadata(1, redirect)
+				if not redirect.is_empty():
+					var color := _REDIRECTED_COLOR
+					if item.get_custom_color(0).is_equal_approx(_DISABLED_COLOR):
+						color = _REDIRECTED_DISABLED_COLOR
+					item.set_custom_color(0, color)
+					item.set_text(0, item.get_text(0) + "[Deprecated]")
+			elif def is Script:
+				if not def.is_abstract():
+					continue
 
-			_setup_item_recursively(item, def)
-			if _select_tag:
-				item.set_selectable(0, false)
-				item.set_custom_color(0, Color.DIM_GRAY)
+				var redirect := _get_cache_redirect(k, "")
 
-			if item.get_child_count() <= 0 and not _domain_limitation.is_empty() and (not _domain_limitation.begins_with(k + ".") and not _domain_limitation.begins_with(redirect + ".")):
-				# 过滤命名空间限制
-				item.free()
+				var item := root.create_child()
+				item.set_auto_translate_mode(0, Node.AUTO_TRANSLATE_MODE_DISABLED)
+				item.set_auto_translate_mode(1, Node.AUTO_TRANSLATE_MODE_DISABLED)
+				item.set_text(0, k)
+				item.set_metadata(0, _get_cache_redirect(k, k))
+				item.set_tooltip_text(0, _get_cache_desc(k, k))
+
+				item.set_text(1, redirect)
+				item.set_tooltip_text(1, redirect)
+				item.set_custom_color(1, Color.DARK_GRAY)
+				item.set_selectable(1, not redirect.is_empty())
+				item.set_metadata(1, redirect)
+
+				_setup_item_recursively(item, def)
+				if _select_tag:
+					item.set_selectable(0, false)
+					item.set_selectable(1, false)
+					item.set_custom_color(0, _DISABLED_COLOR)
+
+				if not redirect.is_empty():
+					var color := _REDIRECTED_COLOR
+					if item.get_custom_color(0).is_equal_approx(_DISABLED_COLOR):
+						color = _REDIRECTED_DISABLED_COLOR
+					item.set_custom_color(0, color)
+					item.set_text(0, item.get_text(0) + "[Deprecated]")
+
+				if item.get_child_count() <= 0 and not _domain_limitation.is_empty() and (not _domain_limitation.begins_with(k + ".") and not _domain_limitation.begins_with(redirect + ".")):
+					# 过滤命名空间限制
+					item.free()
+				
+
 
 	_on_search_text_changed(_search_line_edit.text)
 	popup_centered_ratio(0.6)
@@ -120,13 +161,14 @@ func _get_cache_redirect(tag_text: String, default: String) -> String:
 	return redirected
 
 
-func _setup_item_recursively(parent: TreeItem, def: Dictionary) -> void:
+func _setup_item_recursively(parent: TreeItem, def: Script) -> void:
 	var prev_domain := parent.get_metadata(0) as String
-	for k: String in def:
+	var const_map := def.get_script_constant_map()
+	for k: String in const_map:
 		if k == &"DOMAIN_NAME":
 			continue
 
-		var next_def: Variant = def[k]
+		var next_def: Variant = const_map[k]
 		var tag := prev_domain + "." + k
 
 		var item := parent.create_child()
@@ -143,15 +185,25 @@ func _setup_item_recursively(parent: TreeItem, def: Dictionary) -> void:
 		item.set_selectable(1, not redirect.is_empty())
 		item.set_metadata(1, redirect)
 
-		if next_def is Dictionary:
-			_setup_item_recursively(item, next_def)
-			if _select_tag:
-				item.set_selectable(0, false)
-				item.set_custom_color(0, Color.DIM_GRAY)
+		if next_def is Script:
+			if next_def.is_abstract():
+				_setup_item_recursively(item, next_def)
+				if _select_tag:
+					item.set_selectable(0, false)
+					item.set_selectable(1, false)
+					item.set_custom_color(0, _DISABLED_COLOR)
 		else:
 			if not _select_tag:
 				item.set_selectable(0, false)
-				item.set_custom_color(0, Color.DIM_GRAY)
+				item.set_selectable(1, false)
+				item.set_custom_color(0, _DISABLED_COLOR)
+
+		if not redirect.is_empty():
+			var color := _REDIRECTED_COLOR
+			if item.get_custom_color(0).is_equal_approx(_DISABLED_COLOR):
+				color = _REDIRECTED_DISABLED_COLOR
+			item.set_custom_color(0, color)
+			item.set_text(0, item.get_text(0) + "[Deprecated]")
 
 		if item.get_child_count() <= 0 and not _domain_limitation.is_empty() \
 				and (
