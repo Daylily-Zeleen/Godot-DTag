@@ -4,6 +4,6 @@
 
 [resource]
 script = ExtResource("1_wjgt3")
-domain = Array[StringName]([&"MainDomain", &"Domain"])
-value = &"MainDomain.Domain.Tag3"
+domain = Array[StringName]([&"RedirectTo", &"New", &"Domain"])
+value = &"RedirectTo.New.Domain.Tag1"
 metadata/_custom_type_script = "uid://bsy135s1y12u5"
