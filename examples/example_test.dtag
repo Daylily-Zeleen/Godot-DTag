@@ -23,8 +23,8 @@ TagWithoutDomain1 ## Tag without domain1
 @MainDomain ## Desc
 	Tag1 -> RedirectTo.New.Tag ## Desc
 	@Domain -> RedirectTo.New.Domain ## Desc
-		Tag2 ## Will be auto redirect to "RedirectTo.New.Domain.Tag2"
-		Tag3 ## Will be auto redirect to "RedirectTo.New.Domain.Tag3"
+		Tag2 ## Will be redirected to "RedirectTo.New.Domain.Tag2"
+		Tag3 ## Will be redirected to "RedirectTo.New.Domain.Tag3"
 
 
 @RedirectTo ## Sample redirect domain.

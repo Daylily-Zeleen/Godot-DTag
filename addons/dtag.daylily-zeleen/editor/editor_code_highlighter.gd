@@ -160,7 +160,6 @@ func _get_line_syntax_highlighting(p_line: int) -> Dictionary:
 								color_region_cache[p_line] = c
 
 						break
-						c += 1
 
 					if j == line_length:
 						j += 1

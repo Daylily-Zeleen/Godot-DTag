@@ -13,7 +13,7 @@ func generate(parse_result: Dictionary[String, RefCounted], redirect_map: Dictio
 		printerr("[DTag] Generate \"%s\" failed: %s" % [GEN_FILE, error_string(FileAccess.get_open_error())])
 		return ""
 
-	var identifiers: PackedStringArray
+	var identifiers: PackedStringArray # TODO: Check identifiers.
 	var text := "# NOTE: This file is generated, any modify maybe discard.\n"
 	text += "class_name DTagDef\n\n"
 
@@ -30,19 +30,11 @@ func generate(parse_result: Dictionary[String, RefCounted], redirect_map: Dictio
 	text += "\n"
 	for def in parse_result.values():
 		if def is DomainDef:
-			if not identifiers.has(def.name):
-				identifiers.push_back(def.name)
-
+			text += _generate_doman_class_recursively(def, "", identifiers)
 			text += "\n"
-			if not def.desc.is_empty():
-				text += "## %s\n" % def.desc
-			text += "const %s = {\n" % def.name
-			text += "\t%s = &\"%s\",\n" % [DOMAIN_NAME, def.name if def.redirect.is_empty() else def.redirect]
-			text += _generate_text_recursively(def, def.name, identifiers)
-			text += "}\n"
 
 	if not redirect_map.is_empty():
-		text += "\n\n# ===== Redirect map. =====\n"
+		text += "# ===== Redirect map. =====\n"
 		text += "const _REDIRECT_NAP: Dictionary[StringName, StringName] = {\n"
 		for k in redirect_map:
 			var redirected := redirect_map[k]
@@ -75,24 +67,42 @@ func generate(parse_result: Dictionary[String, RefCounted], redirect_map: Dictio
 
 
 #region Generate
-static func _generate_text_recursively(def: DomainDef, prev_tag: String, r_identifiers: PackedStringArray, depth := 0) -> String:
+static func _generate_doman_class_recursively(def: DomainDef, prev_tag: String, r_identifiers: PackedStringArray) -> String:
+	var domain_text :String
+	if def.redirect.is_empty():
+		domain_text = def.name if prev_tag.is_empty() else ("%s.%s" % [prev_tag, def.name])
+	else:
+		domain_text = def.redirect
+
+	if not r_identifiers.has(def.name):
+		r_identifiers.push_back(def.name)
+
 	var ret := ""
+	if not def.desc.is_empty():
+		ret += "## %s\n" % def.desc
+	ret += "@abstract class %s extends Object:\n" % def.name
+	ret += "\t## StringName of this domain.\n"
+	ret += "\tconst %s = &\"%s\"\n" % [DOMAIN_NAME, domain_text]
+
 	for tag: TagDef in def.tag_list.values():
-		var tag_text := ("%s.%s" % [prev_tag, tag.name]) if tag.redirect.is_empty() else tag.redirect
+		var tag_text :String
+		if tag.redirect.is_empty():
+			tag_text = "%s.%s" % [domain_text, tag.name]
+		else:
+			tag_text = tag.redirect
+
 		if not tag.desc.is_empty():
-			ret += "\t## %s\n" %[tag.desc]
-		ret += "\t%s = &\"%s\",\n" % [tag.name, tag_text]
+			ret += "\t## %s\n" % tag.desc
+		ret += "\tconst %s = &\"%s\"\n" % [tag.name, tag_text]
+
+		if not r_identifiers.has(def.name):
+			r_identifiers.push_back(def.name)
+
+	ret += "\n"
 
 	for domain: DomainDef in def.sub_domain_list.values():
-		var tag_text := ("%s.%s" % [prev_tag, domain.name]) if domain.redirect.is_empty() else domain.redirect
-		if not domain.desc.is_empty():
-			ret += "\t## %s\n" % domain.desc
-		ret += "\t%s = {\n" %domain.name
-		ret += "\t\t%s = &\"%s\",\n" % [DOMAIN_NAME, tag_text]
-		ret += _generate_text_recursively(domain, tag_text, r_identifiers, depth + 1)
-		ret += "\t},\n"
+		ret += _generate_doman_class_recursively(domain, domain_text, r_identifiers).indent("\t")
 
-	for i in range(depth):
-		ret = ret.indent("\t")
+		
 	return ret
 #endregion Generate

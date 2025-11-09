@@ -5,48 +5,48 @@ class_name DTagDef
 ## Tag without domain
 const TagWithoutDomain = &"TagWithoutDomain"
 
-## Tag without domain
+## Tag without domain1
 const TagWithoutDomain1 = &"TagWithoutDomain1"
 
-
 ## Desc
-const MainDomain = {
-	DOMAIN_NAME = &"MainDomain",
+@abstract class MainDomain extends Object:
+	## StringName of this domain.
+	const DOMAIN_NAME = &"MainDomain"
 	## Desc
-	Tag1 = &"Redirect.To.New.Tag",
+	const Tag1 = &"RedirectTo.New.Tag"
+
 	## Desc
-	Domain = {
-		DOMAIN_NAME = &"Redirect.To.New.Domain",
-		## Will be auto redirect to "Redirect.To.New.Domain.Tag2"
-		Tag2 = &"Redirect.To.New.Domain.Tag2",
-		## Will be auto redirect to "Redirect.To.New.Domain.Tag3"
-		Tag3 = &"Redirect.To.New.Domain.Tag3",
-	},
-}
+	@abstract class Domain extends Object:
+		## StringName of this domain.
+		const DOMAIN_NAME = &"RedirectTo.New.Domain"
+		## Will be redirected to "RedirectTo.New.Domain.Tag2"
+		const Tag2 = &"RedirectTo.New.Domain.Tag2"
+		## Will be redirected to "RedirectTo.New.Domain.Tag3"
+		const Tag3 = &"RedirectTo.New.Domain.Tag3"
+
 
 ## Sample redirect domain.
-const Redirect = {
-	DOMAIN_NAME = &"Redirect",
-	To = {
-		DOMAIN_NAME = &"Redirect.To",
-		New = {
-			DOMAIN_NAME = &"Redirect.To.New",
-				Tag = &"Redirect.To.New.Tag",
-				Domain = {
-					DOMAIN_NAME = &"Redirect.To.New.Domain",
-							Tag1 = &"Redirect.To.New.Domain.Tag1",
-							Tag2 = &"Redirect.To.New.Domain.Tag2",
-							Tag3 = &"Redirect.To.New.Domain.Tag3",
-				},
-		},
-	},
-}
+@abstract class RedirectTo extends Object:
+	## StringName of this domain.
+	const DOMAIN_NAME = &"RedirectTo"
+
+	@abstract class New extends Object:
+		## StringName of this domain.
+		const DOMAIN_NAME = &"RedirectTo.New"
+		const Tag = &"RedirectTo.New.Tag"
+
+		@abstract class Domain extends Object:
+			## StringName of this domain.
+			const DOMAIN_NAME = &"RedirectTo.New.Domain"
+			const Tag1 = &"RedirectTo.New.Domain.Tag1"
+			const Tag2 = &"RedirectTo.New.Domain.Tag2"
+			const Tag3 = &"RedirectTo.New.Domain.Tag3"
 
 
 # ===== Redirect map. =====
 const _REDIRECT_NAP: Dictionary[StringName, StringName] = {
-	&"MainDomain.Tag1" : &"Redirect.To.New.Tag",
-	&"MainDomain.Domain" : &"Redirect.To.New.Domain",
-	&"MainDomain.Domain.Tag2" : &"Redirect.To.New.Domain.Tag2",
-	&"MainDomain.Domain.Tag3" : &"Redirect.To.New.Domain.Tag3",
+	&"MainDomain.Tag1" : &"RedirectTo.New.Tag",
+	&"MainDomain.Domain" : &"RedirectTo.New.Domain",
+	&"MainDomain.Domain.Tag2" : &"RedirectTo.New.Domain.Tag2",
+	&"MainDomain.Domain.Tag3" : &"RedirectTo.New.Domain.Tag3",
 }
