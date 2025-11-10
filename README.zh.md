@@ -203,9 +203,9 @@ func example() -> void:
 		@export_custom(PROPERTY_HINT_TYPE_STRING, "%s:DTagEditor" % TYPE_STRING_NAME) var tag_list: Array[StringName]
 		```
 
-- **DTagDomainEdit**: 一个将 `Array/Array[StringName]/Array[String]/PackedStringName` 类型属性识别为 Tag Domain 的 hint_string。
+- **DTagDomainEdit**: 一个将  `StringName/String/Array/Array[StringName]/Array[String]/PackedStringName` 类型属性识别为 Tag Domain 的 hint_string。
 
-	- 与 `Array/Array[StringName]/Array[String]/PackedStringName` 一起使用的基础用法:
+	- 与 `StringName/String/Array/Array[StringName]/Array[String]/PackedStringName` 一起使用的基础用法:
 
 		```GDScript
 		# This can select any domain in inspector.
@@ -219,14 +219,23 @@ func example() -> void:
 		@export_custom(PROPERTY_HINT_TYPE_STRING, "%s:DTagDomainEditor" % TYPE_PACKED_STRING_ARRAY) var domain_list :Array[PackedStringArray]
 		```
 
+#### 可于 "res://examples/custom_res.gd" 中查看更多示例。
+
 ### 3. 对于传入的 StringName, 可使用 `DTag.redirect()` 确保重定向至最新的目标。
 
-> **NOTE: 典型的使用场景是使用导出的 dtag 属性时确保其重定向至最新目标。**
+> **NOTE: 典型的使用场景是使用导出的 DTag 属性时确保其重定向至最新目标。**
 
 ```GDScript
-......
+@tool # To enabled redirect in editor (optional).
+
 @export_custom(PROPERTY_HINT_NONE, "DTagEdit") var tag: StringName
+## Redirect automatically when set.
+@export_custom(PROPERTY_HINT_NONE, "DTagEdit") var tag_redirect: StringName:
+	set(v):
+		tag_redirect = DTag.redirect(v)
+
 ......
+	# Redirect when you need.
 	var redirected_target := DTag.redirect(tag)
 ......
 ```

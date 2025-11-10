@@ -16,16 +16,16 @@ class EditorInspectorPluginTag extends EditorInspectorPlugin:
 		var select_tag := hint_string.begins_with(TAG_EDIT_PREFIX)
 		var select_domain := hint_string.begins_with(TAG_DOMAIN_EDIT_PREFIX)
 		if type in [TYPE_STRING, TYPE_STRING_NAME, TYPE_ARRAY, TYPE_PACKED_STRING_ARRAY]:
+			var splits := hint_string.split(":", false, 1)
+			var domain_limitation := [] if splits.size() < 2 else (splits[1].strip_edges(true).split(".", false))
 			if select_tag:
-				var splits := hint_string.split(":", false, 1)
-				var domain := [] if splits.size() < 2 else (splits[1].strip_edges(true).split(".", false))
 				var prop_edit := preload("editor/edit_property_dtag.gd").new()
-				prop_edit.setup(domain, true, _selector)
+				prop_edit.setup(domain_limitation, true, _selector)
 				add_property_editor(name, prop_edit)
 				return true
 			elif select_domain:
 				var prop_edit := preload("editor/edit_property_dtag.gd").new()
-				prop_edit.setup([], false, _selector)
+				prop_edit.setup(domain_limitation, false, _selector)
 				add_property_editor(name, prop_edit)
 				return true
 		return false

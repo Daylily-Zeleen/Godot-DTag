@@ -4,8 +4,3 @@
 
 [resource]
 script = ExtResource("1_2napx")
-tag1 = &"MainDomain.Tag1"
-tag2 = &"MainDomain.Domain.Tag2"
-tag_list = Array[StringName]([&"RedirectTo.New.Domain.Tag1", &"RedirectTo.New.Domain.Tag2"])
-tag_domain = Array[StringName]([&"RedirectTo", &"New"])
-domain_list = Array[PackedStringArray]([PackedStringArray("RedirectTo", "New", "Domain"), PackedStringArray("MainDomain2", "Domain2")])

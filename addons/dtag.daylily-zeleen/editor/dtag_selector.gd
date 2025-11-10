@@ -42,16 +42,16 @@ func _ready() -> void:
 	_tree.set_column_title(1, "Redirect")
 
 
-func setup(tag: StringName, domain: PackedStringArray, select_tag: bool) -> void:
-	_domain_limitation = (".".join(domain) + ".") if not domain.is_empty() else ""
+func setup(p_selected: StringName, domain_limitation: PackedStringArray, select_tag: bool) -> void:
+	_domain_limitation = (".".join(domain_limitation) + ".") if not domain_limitation.is_empty() else ""
 	_select_tag = select_tag
+	if not _domain_limitation.is_empty():
+		title += ": " + _domain_limitation
+	_selected = p_selected
+
 	if select_tag:
-		_selected = tag
 		title = "Select DTag"
-		if not _domain_limitation.is_empty():
-			title += ": " + _domain_limitation
 	else:
-		_selected = ".".join(domain)
 		title = "Select DTag Domain"
 
 	_leaves_item.clear()

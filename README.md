@@ -197,9 +197,9 @@ This plugin provides editor plugins that use a special selector to choose Tags o
 		@export_custom(PROPERTY_HINT_TYPE_STRING, "%s:DTagEditor" % TYPE_STRING_NAME) var tag_list: Array[StringName]
 		```
 
-- **DTagDomainEdit**: A hint_string that recognizes `Array/Array[StringName]/Array[String]/PackedStringName` type properties as Tag Domains.
+- **DTagDomainEdit**: A hint_string that recognizes `StringName/String/Array/Array[StringName]/Array[String]/PackedStringName` type properties as Tag Domains.
 
-	- Basic usage with `Array/Array[StringName]/Array[String]/PackedStringName`:
+	- Basic usage with `StringName/String/Array/Array[StringName]/Array[String]/PackedStringName`:
 
 		```GDScript
 		# This can select any domain in inspector.
@@ -213,14 +213,24 @@ This plugin provides editor plugins that use a special selector to choose Tags o
 		@export_custom(PROPERTY_HINT_TYPE_STRING, "%s:DTagDomainEditor" % TYPE_PACKED_STRING_ARRAY) var domain_list :Array[PackedStringArray]
 		```
 
+#### You can refer to "res://addons/dtag.daylily-zeleen/examples" for more details
+
 ### 3. For incoming StringName, use `DTag.redirect()` to ensure redirection to the latest target.
 
-> **NOTE: Typical usage scenario is when using exported dtag properties to ensure they redirect to the latest target.**
+> **NOTE: Typical usage scenario is when using exported DTag properties to ensure they redirect to the latest target.**
+
 
 ```GDScript
-......
+@tool # To enabled redirect in editor (optional).
+
 @export_custom(PROPERTY_HINT_NONE, "DTagEdit") var tag: StringName
+## Redirect automatically when set.
+@export_custom(PROPERTY_HINT_NONE, "DTagEdit") var tag_redirect: StringName:
+	set(v):
+		tag_redirect = DTag.redirect(v)
+
 ......
+	# Redirect when you need.
 	var redirected_target := DTag.redirect(tag)
 ......
 ```
