@@ -168,7 +168,7 @@ This plugin provides editor plugins that use a special selector to choose Tags o
 
 ![](.doc/DTag.gif)
 
-`DTag` has `value/tag` ("tag" is an alias for "value" in the inspector) and `domain` properties.
+`DTag` has `value/tag` ("tag" is an alias for "value" in the inspector) and `domain` properties, and can redirect automatically in runtime.
 
 ### 2. Using Special hint_string and Custom Properties:
 

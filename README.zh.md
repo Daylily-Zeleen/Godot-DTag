@@ -172,7 +172,7 @@ func example() -> void:
 ![](.doc/DTag.gif)
 
 
-`DTag` 拥有 `value/tag("tag"为"value"在检查器中的别名)` 和 `domain` 属性.
+`DTag` 拥有 `value/tag("tag"为"value"在检查器中的别名)` 和 `domain` 属性，并且可以在运行时自动重定向。
 
 
 ### 2. 使用特殊的 hint_string 与自定义属性：
