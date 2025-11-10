@@ -144,6 +144,9 @@ func setup(tag: StringName, domain: PackedStringArray, select_tag: bool) -> void
 					# 过滤命名空间限制
 					item.free()
 
+
+	if not _domain_limitation.is_empty() and _tree.get_root().get_child_count() == 0:
+		print_rich("[color=yellow][DTag]: domain limitation \"%s\" is not exists in this project.[/color]" % [_domain_limitation])
 	_on_search_text_changed(_search_line_edit.text)
 	popup_centered_ratio(0.6)
 
