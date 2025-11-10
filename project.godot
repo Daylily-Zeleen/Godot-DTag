@@ -8,6 +8,10 @@
 
 config_version=5
 
+[DTag]
+
+basic/code_generators=[Resource("uid://bdfrqw07rqea", "res://examples/example_code_generator.gd")]
+
 [application]
 
 config/name="Godot-DTag"

@@ -42,13 +42,13 @@ const SETTINGS_CODE_GENERATOR := "DTag/basic/code_generators"
 func _enter_tree() -> void:
 	# Setting code generators
 	if not ProjectSettings.has_setting(SETTINGS_CODE_GENERATOR):
-		ProjectSettings.set_setting(SETTINGS_CODE_GENERATOR, PackedStringArray())
-	ProjectSettings.set_initial_value(SETTINGS_CODE_GENERATOR, PackedStringArray())
+		ProjectSettings.set_setting(SETTINGS_CODE_GENERATOR, [])
+	ProjectSettings.set_initial_value(SETTINGS_CODE_GENERATOR, [])
 	ProjectSettings.set_as_basic(SETTINGS_CODE_GENERATOR, true)
 	var property_info = {
 		"name": SETTINGS_CODE_GENERATOR,
-		"type": TYPE_PACKED_STRING_ARRAY,
-		"hint": PROPERTY_HINT_FILE,
+		"type": TYPE_ARRAY,
+		"hint": PROPERTY_HINT_ARRAY_TYPE,
 		"hint_string": "GDScript",
 	}
 	ProjectSettings.add_property_info(property_info)
@@ -87,15 +87,14 @@ func _exit_tree() -> void:
 
 
 func _on_generate_dtag_def_gen_requested() -> void:
-	var code_generators := ProjectSettings.get_setting(SETTINGS_CODE_GENERATOR) as PackedStringArray
+	var code_generators := ProjectSettings.get_setting(SETTINGS_CODE_GENERATOR) as Array
 
 	var generators: Array[Object]
-	for fp in code_generators:
-		if not FileAccess.file_exists(fp):
+	for s in code_generators:
+		s = s as GDScript
+		if not is_instance_valid(s):
 			continue
 
-		var s := ResourceLoader.load(fp, "GDScript", ResourceLoader.CACHE_MODE_IGNORE) as GDScript
-		assert(is_instance_valid(s))
 		var g := s.new() as Object
 		var valid := false
 
