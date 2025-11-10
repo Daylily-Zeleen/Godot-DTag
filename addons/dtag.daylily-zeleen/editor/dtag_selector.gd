@@ -42,6 +42,60 @@ func _ready() -> void:
 	_tree.set_column_title(1, "Redirect")
 
 
+# r_text_ref, 0 - tag_text, 1 - redirect_text
+func _add_item(parent: TreeItem, tag_name: String, is_tag: bool, r_text_ref: Array = []) -> TreeItem:
+	var prev_domain := parent.get_metadata(0) as String
+	var tag_text := tag_name if prev_domain.is_empty() else ("%s.%s" % [prev_domain, tag_name])
+	var redirect := _get_cache_redirect(tag_text, "")
+
+	r_text_ref.clear()
+	r_text_ref.push_back(tag_text)
+	r_text_ref.push_back(redirect)
+
+	var item := parent.create_child()
+	item.set_auto_translate_mode(0, Node.AUTO_TRANSLATE_MODE_DISABLED)
+	item.set_auto_translate_mode(1, Node.AUTO_TRANSLATE_MODE_DISABLED)
+	item.set_text(0, tag_text)
+	item.set_metadata(0, tag_text)
+	item.set_tooltip_text(0, _get_cache_desc(tag_text, tag_text))
+
+	item.set_text(1, redirect)
+	item.set_tooltip_text(1, _get_cache_desc(redirect, redirect))
+	item.set_custom_color(1, Color.DARK_GRAY)
+	item.set_selectable(1, not redirect.is_empty())
+	item.set_metadata(1, redirect)
+
+	if is_tag:
+		if not _select_tag:
+			item.set_selectable(0, false)
+			item.set_selectable(1, false)
+			item.set_custom_color(0, _DISABLED_COLOR)
+	else:
+		if _select_tag:
+			item.set_selectable(0, false)
+			item.set_selectable(1, false)
+			item.set_custom_color(0, _DISABLED_COLOR)
+
+	if not redirect.is_empty():
+		var color := _REDIRECTED_COLOR
+		if item.get_custom_color(0).is_equal_approx(_DISABLED_COLOR):
+			color = _REDIRECTED_DISABLED_COLOR
+		item.set_custom_color(0, color)
+		item.set_text(0, item.get_text(0) + "[Deprecated]")
+
+	return item
+
+
+func _is_fit_limitation(tag_text: String, redirect_text: String) -> bool:
+	return _domain_limitation.is_empty() \
+			or _domain_limitation.begins_with(tag_text + ".") or tag_text.begins_with(_domain_limitation) \
+			or _domain_limitation.begins_with(redirect_text + ".") or redirect_text.begins_with(_domain_limitation)
+
+
+func _is_incompatible_with_limitation(item: TreeItem) -> bool:
+	return item.get_child_count() <= 0 and not _is_fit_limitation(item.get_metadata(0), item.get_metadata(1))
+
+
 func setup(p_selected: StringName, domain_limitation: PackedStringArray, select_tag: bool) -> void:
 	_domain_limitation = (".".join(domain_limitation) + ".") if not domain_limitation.is_empty() else ""
 	_select_tag = select_tag
@@ -72,78 +126,7 @@ func setup(p_selected: StringName, domain_limitation: PackedStringArray, select_
 
 	if not def_class_path.is_empty():
 		var def_script := load(def_class_path) as Script
-		var const_map := def_script.get_script_constant_map()
-		for k in const_map:
-			if k == &"_REDIRECT_NAP":
-				continue
-
-			var def: Variant = const_map[k]
-			if def is StringName:
-				var redirect := _get_cache_redirect(k, "")
-				var item := root.create_child()
-				item.set_auto_translate_mode(0, Node.AUTO_TRANSLATE_MODE_DISABLED)
-				item.set_auto_translate_mode(1, Node.AUTO_TRANSLATE_MODE_DISABLED)
-				item.set_text(0, k)
-				item.set_metadata(0, _get_cache_redirect(k, k))
-				item.set_tooltip_text(0, _get_cache_desc(k, k))
-
-				item.set_text(1, redirect)
-				item.set_tooltip_text(1, redirect)
-				item.set_custom_color(1, Color.DARK_GRAY)
-				item.set_selectable(1, not redirect.is_empty())
-				item.set_metadata(1, redirect)
-
-				if not _select_tag:
-					item.set_selectable(0, false)
-					item.set_selectable(1, false)
-					item.set_custom_color(0, _DISABLED_COLOR)
-
-				if not redirect.is_empty():
-					var color := _REDIRECTED_COLOR
-					if item.get_custom_color(0).is_equal_approx(_DISABLED_COLOR):
-						color = _REDIRECTED_DISABLED_COLOR
-					item.set_custom_color(0, color)
-					item.set_text(0, item.get_text(0) + "[Deprecated]")
-
-				if not _domain_limitation.is_empty():
-					# 过滤命名空间限制
-					item.free()
-			elif def is Script:
-				if not def.is_abstract():
-					continue
-
-				var redirect := _get_cache_redirect(k, "")
-
-				var item := root.create_child()
-				item.set_auto_translate_mode(0, Node.AUTO_TRANSLATE_MODE_DISABLED)
-				item.set_auto_translate_mode(1, Node.AUTO_TRANSLATE_MODE_DISABLED)
-				item.set_text(0, k)
-				item.set_metadata(0, _get_cache_redirect(k, k))
-				item.set_tooltip_text(0, _get_cache_desc(k, k))
-
-				item.set_text(1, redirect)
-				item.set_tooltip_text(1, redirect)
-				item.set_custom_color(1, Color.DARK_GRAY)
-				item.set_selectable(1, not redirect.is_empty())
-				item.set_metadata(1, redirect)
-
-				_setup_item_recursively(item, def)
-				if _select_tag:
-					item.set_selectable(0, false)
-					item.set_selectable(1, false)
-					item.set_custom_color(0, _DISABLED_COLOR)
-
-				if not redirect.is_empty():
-					var color := _REDIRECTED_COLOR
-					if item.get_custom_color(0).is_equal_approx(_DISABLED_COLOR):
-						color = _REDIRECTED_DISABLED_COLOR
-					item.set_custom_color(0, color)
-					item.set_text(0, item.get_text(0) + "[Deprecated]")
-
-				if item.get_child_count() <= 0 and not _domain_limitation.is_empty() and (not _domain_limitation.begins_with(k + ".") and not _domain_limitation.begins_with(redirect + ".")):
-					# 过滤命名空间限制
-					item.free()
-
+		_setup_item_recursively(root, def_script)
 
 	if not _domain_limitation.is_empty() and _tree.get_root().get_child_count() == 0:
 		print_rich("[color=yellow][DTag]: domain limitation \"%s\" is not exists in this project.[/color]" % [_domain_limitation])
@@ -167,58 +150,48 @@ func _get_cache_redirect(tag_text: String, default: String) -> String:
 
 
 func _setup_item_recursively(parent: TreeItem, def: Script) -> void:
-	var prev_domain := parent.get_metadata(0) as String
 	var const_map := def.get_script_constant_map()
+	var prev_domain := parent.get_metadata(0) as String
+
+	# 排序(同一层级下被重定向的目标滞后)
+	var keys :Array[StringName]
+	var redirected_keys: Array[StringName]
 	for k: String in const_map:
-		if k == &"DOMAIN_NAME":
+		if k in [&"DOMAIN_NAME", &"_REDIRECT_NAP"]:
 			continue
 
 		var next_def: Variant = const_map[k]
-		var tag := prev_domain + "." + k
-
-		var item := parent.create_child()
-		item.set_auto_translate_mode(0, Node.AUTO_TRANSLATE_MODE_DISABLED)
-		item.set_auto_translate_mode(1, Node.AUTO_TRANSLATE_MODE_DISABLED)
-		item.set_text(0, k)
-		item.set_metadata(0, tag)
-		item.set_tooltip_text(0, _get_cache_desc(tag, tag))
-
-		var redirect := _get_cache_redirect(tag, "")
-		item.set_text(1, redirect)
-		item.set_tooltip_text(1, redirect)
-		item.set_custom_color(1, Color.DARK_GRAY)
-		item.set_selectable(1, not redirect.is_empty())
-		item.set_metadata(1, redirect)
-
-		if next_def is Script:
-			if next_def.is_abstract():
-				_setup_item_recursively(item, next_def)
-				if _select_tag:
-					item.set_selectable(0, false)
-					item.set_selectable(1, false)
-					item.set_custom_color(0, _DISABLED_COLOR)
+		
+		var tag_text := k if prev_domain.is_empty() else ("%s.%s" % [prev_domain, k])
+		var redirect := _get_cache_redirect(tag_text, "")
+		if redirect.is_empty():
+			keys.push_back(k)
 		else:
-			if not _select_tag:
-				item.set_selectable(0, false)
-				item.set_selectable(1, false)
-				item.set_custom_color(0, _DISABLED_COLOR)
+			redirected_keys.push_back(k)
 
-		if not redirect.is_empty():
-			var color := _REDIRECTED_COLOR
-			if item.get_custom_color(0).is_equal_approx(_DISABLED_COLOR):
-				color = _REDIRECTED_DISABLED_COLOR
-			item.set_custom_color(0, color)
-			item.set_text(0, item.get_text(0) + "[Deprecated]")
+	var func_add := func(k: StringName) -> void:
+		var next_def: Variant = const_map[k]
+		var tag_text := k if prev_domain.is_empty() else ("%s.%s" % [prev_domain, k])
+		var redirect := _get_cache_redirect(tag_text, "")
+		var is_tag := typeof(next_def) == TYPE_STRING_NAME
+		assert(is_tag or (next_def is Script and next_def.is_abstract()))
+		var item := _add_item(parent, k, typeof(next_def) == TYPE_STRING_NAME)
 
-		if item.get_child_count() <= 0 and not _domain_limitation.is_empty() \
-				and (
-					(not _domain_limitation.begins_with(tag + ".") and not tag.begins_with(_domain_limitation)) \
-					and (not _domain_limitation.begins_with(redirect + ".") and not redirect.begins_with(_domain_limitation)) \
-			):
+		if not is_tag:
+			_setup_item_recursively(item, next_def)
+
+	# 将被重定向的对象滞后
+	for k in keys:
+		func_add.call(k)
+	for k in redirected_keys:
+		func_add.call(k)
+
+	# 过滤与记录
+	for item in parent.get_children():
+		if _is_incompatible_with_limitation(item):
 			# 过滤命名空间限制
 			item.free()
 			continue
-
 		if item.get_child_count() <= 0:
 			_leaves_item.push_back(item)
 
