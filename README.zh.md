@@ -242,6 +242,8 @@ func example() -> void:
 
 ### 4. 添加自定义的代码生成器
 
+![](.doc/CustomCodeGenerators.png)
+
 可以通过项目设置中的 "DTag/basic/code_generators” 选项添加自定义的代码生成器，如生成 DTag 的C#定义脚本等。
 自定义代码生成器必须标记为工具脚本，且拥有一个签名为`func generate(parse_result: Dictionary[String, RefCounted], redirect_map: Dictionary[String, String]) -> String` 的生成函数，返回值为生成的文件路径。
 

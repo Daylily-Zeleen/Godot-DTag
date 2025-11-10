@@ -164,13 +164,13 @@ func example() -> void:
 
 This plugin provides editor plugins that use a special selector to choose Tags or Tag Domains in the inspector.
 
-### 1. Using `DTag` Resource
+### 1. Using `DTag` resource
 
 ![](.doc/DTag.gif)
 
 `DTag` has `value/tag` ("tag" is an alias for "value" in the inspector) and `domain` properties, and can redirect automatically in runtime.
 
-### 2. Using Special hint_string and Custom Properties:
+### 2. Using special hint_string with custom properties:
 
 ![](.doc/Custom.gif)
 
@@ -236,6 +236,8 @@ This plugin provides editor plugins that use a special selector to choose Tags o
 ```
 
 ### 4. Adding Custom Code Generators
+
+![](.doc/CustomCodeGenerators.png)
 
 You can add custom code generators through the "DTag/basic/code_generators" option in project settings, such as generating C# definition scripts for DTag.
 Custom code generators must be marked as tool scripts and have a generation function with the signature `func generate(parse_result: Dictionary[String, RefCounted], redirect_map: Dictionary[String, String]) -> String`, returning the generated file path.
