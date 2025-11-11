@@ -1,9 +1,0 @@
-[gd_resource type="Resource" script_class="DTag" load_steps=2 format=3 uid="uid://4w7bv8sgf53e"]
-
-[ext_resource type="Script" uid="uid://bsy135s1y12u5" path="res://addons/dtag.daylily-zeleen/script/dtag.gd" id="1_wjgt3"]
-
-[resource]
-script = ExtResource("1_wjgt3")
-domain = Array[StringName]([&"MainDomain2", &"Domain2"])
-value = &"MainDomain2.Domain2.Tag1"
-metadata/_custom_type_script = "uid://bsy135s1y12u5"
