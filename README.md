@@ -4,7 +4,7 @@
 
 ![](icon.svg)
 
-DTag provides a Tag mechanism similar to Unreal Engine's GameplayTag for Godot.
+Godot-DTag provides a Tag mechanism similar to Unreal Engine's GameplayTag for Godot.
 
 ### Note: This project is still under development and may undergo significant changes in the future.
 
