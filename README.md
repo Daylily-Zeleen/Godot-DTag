@@ -13,6 +13,7 @@ DTag provides a Tag mechanism similar to Unreal Engine's GameplayTag for Godot.
 - Defined through text files (with ".dtag" extension), providing syntax highlighting and syntax checking in Godot's script editor.
 - Provides editor tools to generate definition scripts, and supports custom code generators to generate definition code for different languages (such as C#).
 - Provides inspector plugins for selecting **Tag** or **Tag Domain** (Note: Tag Domain is similar to the concept of namespace. Since "namespace" is already a keyword in GDScript, "domain" is used as an equivalent concept).
+- Allow separate tag definitions of the same domain in different ".dtag" files.
 - Supports redirection of **Tag** or **Tag Domain**, no need to modify old code to point to new targets.
 
 ## Installation:

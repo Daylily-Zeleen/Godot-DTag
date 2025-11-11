@@ -170,18 +170,88 @@ static func _redirect_domain_recursively(def: DomainDef) -> void:
 static func _merge_parse_results(parse_results: Dictionary[String, Dictionary], r_errors: PackedStringArray) -> Dictionary[String, RefCounted]:
 	var ret: Dictionary[String, RefCounted]
 	var defined_main_identifier: Dictionary[String, String]
+	var tag_to_file: Dictionary[String, String]
 	for file: String in parse_results:
-		var res: Dictionary[String, RefCounted] = parse_results[file]
-		for name in res:
-			var def := res[name]
-			if ret.has(name):
-				r_errors.push_back("Main identifer \"%s\" in \"%s\" is redefined in \"%s\"." % [
-					name, file, defined_main_identifier[name]
+		var result := parse_results[file] as Dictionary[String, RefCounted]
+		for n in result:
+			var def := result[n] as RefCounted
+			if def is TagDef:
+				if ret.has(n):
+					r_errors.push_back("Tag \"%s\" in \"%s\" is redefined in \"%s\"." % [
+						n, file, tag_to_file[n]
+					])
+				else:
+					ret[n] = def
+					tag_to_file[n] = file
+			elif def is DomainDef:
+				__merge_resursively(file, [], def, ret, r_errors, tag_to_file)
+	return ret
+
+
+#region Merge
+static func __get_domain_def(route: Array[String], result: Dictionary[String, RefCounted]) -> DomainDef:
+	var ret :DomainDef
+	for i in range(route.size()):
+		var n := route[i]
+		if i == 0:
+			ret = result.get(n, null)
+		else:
+			ret = ret.sub_domain_list.get(n, null)
+		if not is_instance_valid(ret):
+			return null
+	return ret
+
+
+static func __merge_resursively(file:String, cur_route: Array[String], domain: DomainDef, r_result: Dictionary[String, RefCounted], 
+	r_errors: PackedStringArray,
+	r_tag_to_file: Dictionary[String, String] = {},
+) -> void:
+	var next_route := cur_route.duplicate()
+	next_route.push_back(domain.name)
+
+	var exists_domain := __get_domain_def(next_route, r_result)
+	if is_instance_valid(exists_domain):
+		# Tag
+		for t in domain.tag_list:
+			var tag_text := ".".join(next_route) + "." + t
+			if exists_domain.tag_list.has(t):
+				r_errors.push_back("Tag \"%s\" in \"%s\" is redefined in \"%s\"." % [
+					tag_text, file, r_tag_to_file[tag_text]
 				])
 			else:
-				defined_main_identifier[name] = file
-				ret[name] = def
-	return ret
+				exists_domain.tag_list[t] = domain.tag_list[t]
+				r_tag_to_file[tag_text] = file
+		# Sub Domain
+		for d in domain.sub_domain_list:
+			__merge_resursively(file, next_route, domain.sub_domain_list[d], r_result, r_errors, r_tag_to_file)
+		# Info
+		if exists_domain.redirect.is_empty():
+			exists_domain.redirect = domain.redirect
+		if exists_domain.desc.is_empty():
+			exists_domain.desc = domain.desc
+	else:
+		if cur_route.is_empty():
+			r_result[domain.name] = domain
+			__add_tag_source_file_recursively(file, cur_route, domain, r_tag_to_file)
+		else:
+			var prev_domain := __get_domain_def(cur_route, r_result)
+			assert(is_instance_valid(prev_domain))
+			prev_domain.sub_domain_list[domain.name] = domain
+			__add_tag_source_file_recursively(file, cur_route, domain, r_tag_to_file)
+
+
+static func __add_tag_source_file_recursively(file: String, prev_route: Array[String], domain: DomainDef, r_tag_to_file: Dictionary[String, String]) -> void:
+	var domain_text := ".".join(prev_route) + "." + domain.name
+	for t in domain.tag_list:
+		var tag_text := "%s.%s" % [domain_text, t]
+		r_tag_to_file[tag_text] = file
+
+	var cur_route := prev_route.duplicate()
+	cur_route.push_back(domain.name)
+	for d in domain.sub_domain_list:
+		__add_tag_source_file_recursively(file, cur_route, domain.sub_domain_list[d], r_tag_to_file)
+
+#endregion Merge
 
 
 static func _gen_cache(parse_results: Dictionary[String, RefCounted]) -> Dictionary[String, Dictionary]:
