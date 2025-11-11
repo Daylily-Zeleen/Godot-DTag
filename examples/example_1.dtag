@@ -1,0 +1,36 @@
+# Use "@" as the prefix for tag Domain.
+# Use tabs to define hierarchy.
+# Use "->" for redirection.
+# Use "#" for comments.
+# Use "##" for comments on specific domains or tags.
+# Tags and Tag Domains must be valid identifiers.
+# Child Domains must be defined after the parent Domain's Tags.
+#
+# Syntax: Content of "[]" are optional.
+# [@]DomainOrTag [-> Redirect.To.New.DomainOrTag] [## Any comment of this domain or Tag]
+#
+# Example:
+# @MainDomain ## Description of main Domain.
+# 	Tag ## "Domain.Tag", tag should be defined before sub-domain.
+# 	@SubDomain -> NewDomain ## This sub-domain will be redirected to "NewDomain", its tag will be redirected automatically.
+# 		SubTag1 ## This tag will be redirected to "NewDomain.SubTag1" automatically.
+# 		SubTag2 -> NewDomain.Tag ## This tag will be redirected to "NewDomain.Tag" manually.
+
+TagWithoutDomain ## Tag without domain
+TagWithoutDomain1 ## Tag without domain1
+
+
+@MainDomain ## Desc
+	Tag1 -> RedirectTo.New.Tag ## Desc
+	@Domain -> RedirectTo.New.Domain ## Desc
+		Tag2 ## Will be redirected to "RedirectTo.New.Domain.Tag2"
+		Tag3 ## Will be redirected to "RedirectTo.New.Domain.Tag3"
+
+
+@RedirectTo ## Sample redirect domain.
+	@New
+		Tag
+		@Domain
+			Tag1
+			Tag2
+			Tag3

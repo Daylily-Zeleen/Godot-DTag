@@ -14,6 +14,10 @@ config/name="Godot-DTag"
 config/features=PackedStringArray("4.5", "GL Compatibility")
 config/icon="res://icon.svg"
 
+[editor_overrides]
+
+docks/filesystem/textfile_extensions="txt,md,cfg,ini,log,json,yml,yaml,toml,xml,dtag"
+
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/dtag.daylily-zeleen/plugin.cfg")

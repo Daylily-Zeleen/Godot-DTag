@@ -1,7 +1,13 @@
 @tool
 extends ConfirmationDialog
 
-signal selected(tag_or_domain :StringName, confirm: bool)
+const _DISABLED_COLOR := Color.DIM_GRAY
+const _REDIRECTED_COLOR := Color.DARK_ORANGE
+const _REDIRECTED_DISABLED_COLOR := Color.CHOCOLATE
+
+signal selected(tag_or_domain: StringName, confirm: bool)
+
+const CACHE_FILE := "res://.godot/editor/dtag_cache.cfg"
 
 @export_group("_internal_", "_")
 @export var _search_line_edit: LineEdit
@@ -21,10 +27,10 @@ var _domain_limitation: StringName:
 		_domain_limitation_label.text = _domain_limitation
 		_domain_limitation_label.tooltip_text = _domain_limitation
 		_domain_limitation_label.get_parent().visible = not v.is_empty()
-var _select_tag:bool
+var _select_tag: bool
 
-var _leaves_item:Array[TreeItem]
-
+var _leaves_item: Array[TreeItem]
+var _cache_cfg: ConfigFile
 
 func _ready() -> void:
 	hide()
@@ -32,20 +38,75 @@ func _ready() -> void:
 	_search_line_edit.text_changed.connect(_on_search_text_changed)
 	_tree.item_activated.connect(_on_tree_item_activated)
 	_tree.item_selected.connect(_on_tree_item_selected)
+	_tree.columns = 2
+	_tree.set_column_title(1, "Redirect")
 
 
-func setup(tag: StringName, domain: PackedStringArray, select_tag: bool) -> void:
-	_domain_limitation = (".".join(domain) + ".") if not domain.is_empty() else ""
-	_select_tag = select_tag
-	if select_tag:
-		_selected = tag
-		title = "Select DTag"
-		if not _domain_limitation.is_empty():
-			title += ": " + _domain_limitation
+# r_text_ref, 0 - tag_text, 1 - redirect_text
+func _add_item(parent: TreeItem, tag_name: String, is_tag: bool, r_text_ref: Array = []) -> TreeItem:
+	var prev_domain := parent.get_metadata(0) as String
+	var tag_text := tag_name if prev_domain.is_empty() else ("%s.%s" % [prev_domain, tag_name])
+	var redirect := _get_cache_redirect(tag_text, "")
+
+	r_text_ref.clear()
+	r_text_ref.push_back(tag_text)
+	r_text_ref.push_back(redirect)
+
+	var item := parent.create_child()
+	item.set_auto_translate_mode(0, Node.AUTO_TRANSLATE_MODE_DISABLED)
+	item.set_auto_translate_mode(1, Node.AUTO_TRANSLATE_MODE_DISABLED)
+	item.set_text(0, tag_text)
+	item.set_metadata(0, tag_text)
+	item.set_tooltip_text(0, _get_cache_desc(tag_text, tag_text))
+
+	item.set_text(1, redirect)
+	item.set_tooltip_text(1, _get_cache_desc(redirect, redirect))
+	item.set_custom_color(1, Color.DARK_GRAY)
+	item.set_selectable(1, not redirect.is_empty())
+	item.set_metadata(1, redirect)
+
+	if is_tag:
+		if not _select_tag:
+			item.set_selectable(0, false)
+			item.set_selectable(1, false)
+			item.set_custom_color(0, _DISABLED_COLOR)
 	else:
-		_selected = ".".join(domain)
-		title = "Select DTag Domain"
+		if _select_tag:
+			item.set_selectable(0, false)
+			item.set_selectable(1, false)
+			item.set_custom_color(0, _DISABLED_COLOR)
 
+	if not redirect.is_empty():
+		var color := _REDIRECTED_COLOR
+		if item.get_custom_color(0).is_equal_approx(_DISABLED_COLOR):
+			color = _REDIRECTED_DISABLED_COLOR
+		item.set_custom_color(0, color)
+		item.set_text(0, item.get_text(0) + "[Deprecated]")
+
+	return item
+
+
+func _is_fit_limitation(tag_text: String, redirect_text: String) -> bool:
+	return _domain_limitation.is_empty() \
+			or _domain_limitation.begins_with(tag_text + ".") or tag_text.begins_with(_domain_limitation) \
+			or _domain_limitation.begins_with(redirect_text + ".") or redirect_text.begins_with(_domain_limitation)
+
+
+func _is_incompatible_with_limitation(item: TreeItem) -> bool:
+	return item.get_child_count() <= 0 and not _is_fit_limitation(item.get_metadata(0), item.get_metadata(1))
+
+
+func setup(p_selected: StringName, domain_limitation: PackedStringArray, select_tag: bool) -> void:
+	_domain_limitation = (".".join(domain_limitation) + ".") if not domain_limitation.is_empty() else ""
+	_select_tag = select_tag
+	if not _domain_limitation.is_empty():
+		title += ": " + _domain_limitation
+	_selected = p_selected
+
+	if select_tag:
+		title = "Select DTag"
+	else:
+		title = "Select DTag Domain"
 
 	_leaves_item.clear()
 	_tree.clear()
@@ -55,60 +116,82 @@ func setup(tag: StringName, domain: PackedStringArray, select_tag: bool) -> void
 	root.set_tooltip_text(0, "")
 
 	const DEF_CLASS := &"DTagDef"
-	var def_class_path :String = ""
+	var def_class_path: String = ""
 	for class_info in ProjectSettings.get_global_class_list():
 		if class_info.class == DEF_CLASS:
 			def_class_path = class_info.path
 
+	_cache_cfg = ConfigFile.new()
+	_cache_cfg.load(CACHE_FILE)
+
 	if not def_class_path.is_empty():
 		var def_script := load(def_class_path) as Script
-		var const_map := def_script.get_script_constant_map()
-		for k in const_map:
-			var def :Variant = const_map[k]
-			if not def is Dictionary:
-				continue
+		_setup_item_recursively(root, def_script)
 
-			if not _domain_limitation.is_empty() and not _domain_limitation.begins_with(k + "."):
-				# 过滤命名空间限制
-				continue
-
-			var item := root.create_child()
-			item.set_text(0, k)
-			item.set_metadata(0, k)
-			item.set_tooltip_text(0, k)
-			_setup_item_recursively(item, def)
-			if _select_tag:
-				item.set_selectable(0, false)
-				item.set_custom_color(0, Color.DIM_GRAY)
-
+	if not _domain_limitation.is_empty() and _tree.get_root().get_child_count() == 0:
+		print_rich("[color=yellow][DTag]: domain limitation \"%s\" is not exists in this project.[/color]" % [_domain_limitation])
 	_on_search_text_changed(_search_line_edit.text)
 	popup_centered_ratio(0.6)
 
 
-func _setup_item_recursively(parent: TreeItem, def: Dictionary) -> void:
+func _get_cache_desc(tag_text: String, default: String) -> String:
+	assert(is_instance_valid(_cache_cfg))
+	var ret := _cache_cfg.get_value(tag_text, "desc", "") as String
+	if ret.is_empty():
+		return default
+	return ret
+
+
+func _get_cache_redirect(tag_text: String, default: String) -> String:
+	var redirected := DTag.redirect(tag_text)
+	if tag_text == redirected:
+		return default
+	return redirected
+
+
+func _setup_item_recursively(parent: TreeItem, def: Script) -> void:
+	var const_map := def.get_script_constant_map()
 	var prev_domain := parent.get_metadata(0) as String
-	for k: String in def:
-		var next_def :Variant = def[k]
-		var tag := prev_domain + "." + k
-		if not _domain_limitation.is_empty() and (not _domain_limitation.begins_with(tag + ".") and not tag.begins_with(_domain_limitation)):
-			# 过滤命名空间限制
+
+	# 排序(同一层级下被重定向的目标滞后)
+	var keys :Array[StringName]
+	var redirected_keys: Array[StringName]
+	for k: String in const_map:
+		if k in [&"DOMAIN_NAME", &"_REDIRECT_NAP"]:
 			continue
 
-		var item := parent.create_child()
-		item.set_text(0, k)
-		item.set_metadata(0, tag)
-		item.set_tooltip_text(0, tag)
-
-		if next_def is Dictionary:
-			_setup_item_recursively(item, next_def)
-			if _select_tag:
-				item.set_selectable(0, false)
-				item.set_custom_color(0, Color.DIM_GRAY)
+		var next_def: Variant = const_map[k]
+		
+		var tag_text := k if prev_domain.is_empty() else ("%s.%s" % [prev_domain, k])
+		var redirect := _get_cache_redirect(tag_text, "")
+		if redirect.is_empty():
+			keys.push_back(k)
 		else:
-			if not _select_tag:
-				item.set_selectable(0, false)
-				item.set_custom_color(0, Color.DIM_GRAY)
+			redirected_keys.push_back(k)
 
+	var func_add := func(k: StringName) -> void:
+		var next_def: Variant = const_map[k]
+		var tag_text := k if prev_domain.is_empty() else ("%s.%s" % [prev_domain, k])
+		var redirect := _get_cache_redirect(tag_text, "")
+		var is_tag := typeof(next_def) == TYPE_STRING_NAME
+		assert(is_tag or (next_def is Script and next_def.is_abstract()))
+		var item := _add_item(parent, k, typeof(next_def) == TYPE_STRING_NAME)
+
+		if not is_tag:
+			_setup_item_recursively(item, next_def)
+
+	# 将被重定向的对象滞后
+	for k in keys:
+		func_add.call(k)
+	for k in redirected_keys:
+		func_add.call(k)
+
+	# 过滤与记录
+	for item in parent.get_children():
+		if _is_incompatible_with_limitation(item):
+			# 过滤命名空间限制
+			item.free()
+			continue
 		if item.get_child_count() <= 0:
 			_leaves_item.push_back(item)
 
@@ -135,8 +218,12 @@ func _notification(what: int) -> void:
 
 func _on_search_text_changed(search_text: String) -> void:
 	for item in _leaves_item:
-		var tag := item.get_metadata(0) as StringName
-		item.visible = tag.contains(search_text) if not search_text.is_empty() else true
+		if search_text.is_empty():
+			item.visible = true
+		else:
+			var tag := item.get_metadata(0) as String
+			var redirect := item.get_metadata(1) as String
+			item.visible = tag.contains(search_text) or redirect.contains(search_text)
 
 	for item in _leaves_item:
 		_update_parent_item_visible_recursively(item)
@@ -149,12 +236,23 @@ func _on_confirmed() -> void:
 
 
 func _on_tree_item_activated() -> void:
-	var selected_item := _tree.get_selected()
-	if not is_instance_valid(selected_item) or not selected_item.is_selectable(0):
+	var item := _tree.get_selected()
+	if not is_instance_valid(item):
 		return
+
+	if not item.is_selectable(_tree.get_selected_column()):
+		return
+
 	selected.emit(_selected, true)
 	hide()
 
 
 func _on_tree_item_selected() -> void:
-	_selected = _tree.get_selected().get_metadata(0)
+	var item := _tree.get_selected()
+	if not is_instance_valid(item):
+		return
+
+	if not item.is_selectable(_tree.get_selected_column()):
+		return
+
+	_selected = _tree.get_selected().get_metadata(_tree.get_selected_column())

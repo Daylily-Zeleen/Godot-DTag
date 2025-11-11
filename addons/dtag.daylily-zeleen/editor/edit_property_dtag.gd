@@ -1,7 +1,7 @@
 @tool
 extends EditorProperty
 
-var _domain :PackedStringArray
+var _domain_limitation :PackedStringArray
 
 var _tag_button := Button.new()
 
@@ -25,8 +25,8 @@ func _init() -> void:
 	hbox.add_child(clear_btn)
 
 
-func setup(domain: PackedStringArray, select_tag: bool, selector: Window) -> void:
-	_domain = domain
+func setup(domain_limitation: PackedStringArray, select_tag: bool, selector: Window) -> void:
+	_domain_limitation = domain_limitation
 	_select_tag = select_tag
 	_selector = selector
 
@@ -57,9 +57,9 @@ func _on_tag_button_pressed() -> void:
 	var v := obj.get(prop)
 
 	if typeof(v) in [TYPE_STRING, TYPE_STRING_NAME]:
-		_selector.setup(v, _domain, _select_tag)
+		_selector.setup(v, _domain_limitation, _select_tag)
 	elif typeof(v) in [TYPE_ARRAY, TYPE_PACKED_STRING_ARRAY]:
-		_selector.setup(&"", _domain, _select_tag)
+		_selector.setup(".".join(v), _domain_limitation, _select_tag)
 	else:
 		assert(false)
 		return
@@ -69,24 +69,27 @@ func _on_tag_button_pressed() -> void:
 	var confirm := result[1] as bool
 
 	if confirm:
-		match typeof(v):
+		var t := typeof(v)
+		match t:
 			TYPE_STRING, TYPE_STRING_NAME:
 				emit_changed(prop, selected)
 			TYPE_ARRAY:
 				var domain :Array = selected.split(".", false)
 				emit_changed(prop, Array(domain, TYPE_STRING_NAME, &"", null))
-			TYPE_PACKED_STRING_ARRAY:
-				emit_changed(prop, selected.split(".", false))
+			_:
+				var domain :Array = selected.split(".", false)
+				emit_changed(prop, type_convert(domain, t))
 
 
 func _on_clear_btn_pressed() -> void:
 	var obj := get_edited_object()
 	var prop := get_edited_property()
 	var v := obj.get(prop)
-	match typeof(v):
+	var t := typeof(v)
+	match t:
 		TYPE_STRING, TYPE_STRING_NAME:
 			emit_changed(prop, &"")
 		TYPE_ARRAY:
 			emit_changed(prop, Array([], TYPE_STRING_NAME, &"", null))
-		TYPE_PACKED_STRING_ARRAY:
-			emit_changed(prop, PackedStringArray())
+		_:
+			emit_changed(prop, type_convert(null, t))

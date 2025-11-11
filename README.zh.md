@@ -7,9 +7,16 @@
 
 DTag，为 Godot 提供一个类似 Unreal Engine 中 GameplayTag 的 Tag 机制。
 
-DTag 的本质是 `StringName` ，该插件提供了编辑器用具用于生成结构化的常量 `Dictionary`, 并提供对应的检查器插件用于选取 **Tag** 或 **Tag Domain** (注： Tag Domain 类似于命名空间的概念，namespace 已经作为 GDScript 的关键字，故使用 domain 作为同等概念)
+### 注意：该项目仍处于开发中，未来可能会发生巨大变化。
 
-## 注意：该项目仍处于开发中，未来可能会发生巨大变化。
+## 特性：
+- DTag 的本质是 `StringName`。
+- 通过文本文件（以".dtag"作为文件扩展名）进行定义，在godot的脚本编辑器中提供语法高亮与语法检查。
+- 提供编辑器工具用于生成定义脚本用于在代码中访问，并支持自定义的代码生成器生成不同的语言的定义代码段。
+- 提供检查其插件用于选取 **Tag** 或 **Tag Domain** (注： Tag Domain 类似于命名空间的概念，namespace 已经作为 GDScript 的关键字，故使用 domain 作为同等概念)。
+- 支持在不同的".dtag" 定义同一个 Domain 中的不同 Tag。
+- 支持 **Tag** 或 **Tag Domain** 的重定向，无需修改旧代码来指向新的目标。
+- 支持添加自定义代码生成器来生成适合你的DTag定义代码，如生成 DTag 的C#定义脚本等。
 
 ## 安装:
 
@@ -22,50 +29,124 @@ DTag 的本质是 `StringName` ，该插件提供了编辑器用具用于生成�
 
 ### Step1: 定义你的 Tag
 
-除了 "res://addons/", 包括脚本的内部类在内，所有直接继承自 `DTagDefinition` 的 GDScript 类型均会被检测。
+除了 "res://addons/" 目录以及 "." 开头的文件之外，所有以 ".dtag" 作为扩展名的文本文件都将被识别为 DTag 的定义文件。
 
-Example:
-```GDScript
-# res://dtag_example.gd
-extends DTagDefinition
+".dtag" 的语法规则非常简单：
+- 使用 "@" 作为 Domain 标识符的前缀
+- 使用制表符定义层级。
+- 使用 "->" 进行重定向。
+- 使用 "#" 作为注释。
+- 使用 "##" 作为特定域或标签的注释。
+- Tag 和 Tag Domain 必须是有效的标识符。
+- 子级 Domain 必须定义在 父级 Domain 的 Tag 之后。
 
-const MainDomain1 = {
-	Domain1 = {
-		Tag1 = "Example tag1", # Case 1：Use String/StringName as value will be recognized as comment in generated script.
-		Tag2 = null, # Case 2：Use "null" as value will be recognized as tag, too.
-	},
-	Tag3 = "", # Case 3：Empty string as value will be recognized as tag, too.
-}
+每行的具体语法顺序如下([]中为可选内容)
+```
+[@]DomainOrTag [-> Redirect.To.New.DomainOrTag] [## Any comment of this domain or Tag]
+```
 
-class InternalClass extends DTagDefinition:
-	const MainDomain2 = {
-		Domain2 = {
-			Tag1 = "Example tag",
-			Tag2 = "Example tag",
-		}
-	}
-...
+即使不熟悉语法也没关系，在Godot的脚本编辑器中编辑 ".dtag" 文件时会进行解析并提供错误信息，相信你可以很快上手
+
+示例:
+```
+# res://example/example.dtag
+# Use "@" as the prefix for tag Domain.
+# Use tabs to define hierarchy.
+# Use "->" for redirection.
+# Use "#" for comments.
+# Use "##" for comments on specific domains or tags.
+# Tags and Tag Domains must be valid identifiers.
+# Child Domains must be defined after the parent Domain's Tags.
+#
+# Syntax: Content of "[]" are optional.
+# [@]DomainOrTag [-> Redirect.To.New.DomainOrTag] [## Any comment of this domain or Tag]
+#
+# Example:
+# @MainDomain ## Description of main Domain.
+# 	Tag ## "Domain.Tag", tag should be defined before sub-domain.
+# 	@SubDomain -> NewDomain ## This sub-domain will be redirected to "NewDomain", its tag will be redirected automatically.
+# 		SubTag1 ## This tag will be redirected to "NewDomain.SubTag1" automatically.
+# 		SubTag2 -> NewDomain.Tag ## This tag will be redirected to "NewDomain.Tag" manually.
+
+TagWithoutDomain ## Tag without domain
+TagWithoutDomain1 ## Tag without domain1
+
+
+@MainDomain ## Desc
+	Tag1 -> RedirectTo.New.Tag ## Desc
+	@Domain -> RedirectTo.New.Domain ## Desc
+		Tag2 ## Will be redirected to "RedirectTo.New.Domain.Tag2"
+		Tag3 ## Will be redirected to "RedirectTo.New.Domain.Tag3"
+
+
+@RedirectTo ## Sample redirect domain.
+	@New
+		Tag
+		@Domain
+			Tag1
+			Tag2
+			Tag3
 
 ```
 
 ### Step2: 生成 tag 定义.
 
-通过 "项目->工具->Generate dtag_def.gen.gd" 即可生成 "res://dtag_def.gen.gd"。
+通过 "项目->工具->Generate dtag_def.gen.gd" 即可生成 Tag 的定义代码段，其中 GDScript 用的 "res://dtag_def.gen.gd" 作为编辑器工具的依赖必然会被生成。
 
-这是由 step1 生成的脚本.
+这是由 step1 的 "example.dtag" 生成的脚本.
 ```GDScript
 # res://dtag_def.gen.gd
 # NOTE: This file is generated, any modify maybe discard.
 class_name DTagDef
 
 
-const MainDomain1 = {
-	Domain1 = {
-		## Example tag1
-		Tag1 = &"MainDomain1.Domain1.Tag1",
-		Tag2 = &"MainDomain1.Domain1.Tag2",
-	},
-	Tag3 = &"MainDomain1.Tag3",
+## Tag without domain
+const TagWithoutDomain = &"TagWithoutDomain"
+
+## Tag without domain1
+const TagWithoutDomain1 = &"TagWithoutDomain1"
+
+## Desc
+@abstract class MainDomain extends Object:
+	## StringName of this domain.
+	const DOMAIN_NAME = &"MainDomain"
+	## Desc
+	const Tag1 = &"RedirectTo.New.Tag"
+
+	## Desc
+	@abstract class Domain extends Object:
+		## StringName of this domain.
+		const DOMAIN_NAME = &"RedirectTo.New.Domain"
+		## Will be redirected to "RedirectTo.New.Domain.Tag2"
+		const Tag2 = &"RedirectTo.New.Domain.Tag2"
+		## Will be redirected to "RedirectTo.New.Domain.Tag3"
+		const Tag3 = &"RedirectTo.New.Domain.Tag3"
+
+
+## Sample redirect domain.
+@abstract class RedirectTo extends Object:
+	## StringName of this domain.
+	const DOMAIN_NAME = &"RedirectTo"
+
+	@abstract class New extends Object:
+		## StringName of this domain.
+		const DOMAIN_NAME = &"RedirectTo.New"
+		const Tag = &"RedirectTo.New.Tag"
+
+		@abstract class Domain extends Object:
+			## StringName of this domain.
+			const DOMAIN_NAME = &"RedirectTo.New.Domain"
+			const Tag1 = &"RedirectTo.New.Domain.Tag1"
+			const Tag2 = &"RedirectTo.New.Domain.Tag2"
+			const Tag3 = &"RedirectTo.New.Domain.Tag3"
+
+
+# ===== Redirect map. =====
+const _REDIRECT_NAP: Dictionary[StringName, StringName] = {
+	&"MainDomain.Tag1" : &"RedirectTo.New.Tag",
+	&"MainDomain.Domain" : &"RedirectTo.New.Domain",
+	&"MainDomain.Domain.Tag2" : &"RedirectTo.New.Domain.Tag2",
+	&"MainDomain.Domain.Tag3" : &"RedirectTo.New.Domain.Tag3",
 }
 
 ```
@@ -77,9 +158,8 @@ const MainDomain1 = {
 ```
 
 func example() -> void:
-	var example_tag1 := DTagDef.MainDomain1.Domain1.Tag1
-	print(example_tag1) # Output &"MainDomain1.Domain1.Tag1"
-
+	print(DTagDef.MainDomain.Tag1)
+	print(DTagDef.MainDomain.Domain.Tag2)
 
 ```
 
@@ -93,7 +173,7 @@ func example() -> void:
 ![](.doc/DTag.gif)
 
 
-`DTag` 拥有 `value/tag("value"在检查器中的别名)` 和 `domain` 属性.
+`DTag` 拥有 `value/tag("tag"为"value"在检查器中的别名)` 和 `domain` 属性，并且可以在运行时自动重定向。
 
 
 ### 2. 使用特殊的 hint_string 与自定义属性：
@@ -117,25 +197,66 @@ func example() -> void:
 		@export_custom(PROPERTY_HINT_NONE, "DTagEdit: MainDomain1.Domain1") var tag2: StringName
 		```
 
-    - 它还可以与 `Array[StringName]`/`Array[String]` 类型的属性一起工作, 将数组元素在检查器中识别为 Tag:
+	- 它还可以与 `Array[StringName]`/`Array[String]` 类型的属性一起工作, 将数组元素在检查器中识别为 Tag:
 
 		``` GDScript
 		# This will recognize each element as tag in inspector.
 		@export_custom(PROPERTY_HINT_TYPE_STRING, "%s:DTagEditor" % TYPE_STRING_NAME) var tag_list: Array[StringName]
 		```
 
-- **DTagDomainEdit**: 一个将 `Array/Array[StringName]/Array[String]/PackedStringName` 类型属性识别为 Tag Domain 的 hint_string。
+- **DTagDomainEdit**: 一个将  `StringName/String/Array/Array[StringName]/Array[String]/PackedStringName` 类型属性识别为 Tag Domain 的 hint_string。
 
-	- 与 `Array/Array[StringName]/Array[String]/PackedStringName` 一起使用的基础用法:
+	- 与 `StringName/String/Array/Array[StringName]/Array[String]/PackedStringName` 一起使用的基础用法:
 
 		```GDScript
 		# This can select any domain in inspector.
 		@export_custom(PROPERTY_HINT_NONE, "DTagDomainEdit") var tag_domain: Array[StringName]
 		```
 
-    - 与 `Array[Array]`/`Array[PackedStringArray]` 类型的属性一起工作，将数组元素在检查器中识别为 Tag Domain:
+	- 与 `Array[Array]`/`Array[PackedStringArray]` 类型的属性一起工作，将数组元素在检查器中识别为 Tag Domain:
 
 		```GDScript
 		# This will recognize each element as tag domain in inspector.
-        @export_custom(PROPERTY_HINT_TYPE_STRING, "%s:DTagDomainEditor" % TYPE_PACKED_STRING_ARRAY) var domain_list :Array[PackedStringArray]
+		@export_custom(PROPERTY_HINT_TYPE_STRING, "%s:DTagDomainEditor" % TYPE_PACKED_STRING_ARRAY) var domain_list :Array[PackedStringArray]
 		```
+
+#### 可于 "res://examples/custom_res.gd" 中查看更多示例。
+
+### 3. 对于传入的 StringName, 可使用 `DTag.redirect()` 确保重定向至最新的目标。
+
+> **NOTE: 典型的使用场景是使用导出的 DTag 属性时确保其重定向至最新目标。**
+
+```GDScript
+@tool # To enabled redirect in editor (optional).
+
+@export_custom(PROPERTY_HINT_NONE, "DTagEdit") var tag: StringName
+## Redirect automatically when set.
+@export_custom(PROPERTY_HINT_NONE, "DTagEdit") var tag_redirect: StringName:
+	set(v):
+		tag_redirect = DTag.redirect(v)
+
+......
+	# Redirect when you need.
+	var redirected_target := DTag.redirect(tag)
+......
+```
+
+### 4. 添加自定义的代码生成器
+
+![](.doc/CustomCodeGenerators.png)
+
+可以通过项目设置中的 "DTag/basic/code_generators” 选项添加自定义的代码生成器，如生成 DTag 的C#定义脚本等。
+自定义代码生成器必须标记为工具脚本，且拥有一个签名为`func generate(parse_result: Dictionary[String, RefCounted], redirect_map: Dictionary[String, String]) -> String` 的生成函数，返回值为生成的文件路径。
+
+示例：（仅输出解析结果的键作为演示，具体请参考 "res://addons/dtag.daylily-zeleen/generater/gen_dtag_def_gdscript.gd"）
+```GDScript
+# res://example/example_generator.gd
+@tool # Tool annotation is required
+
+func generate(parse_result: Dictionary[String, RefCounted], redirect_map: Dictionary[String, String]) -> String:
+	for k in parse_result:
+		print(k)
+
+	return ""
+
+```

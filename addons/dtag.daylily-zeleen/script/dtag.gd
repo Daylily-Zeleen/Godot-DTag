@@ -6,22 +6,24 @@ extends Resource
 ## Tag Domain, use as limitation.
 @export_custom(PROPERTY_HINT_NONE, "DTagDomainEdit") var domain: Array[StringName]:
 	set(v):
-		domain = v
-		if Engine.is_editor_hint() and not value.is_empty():
-			if not is_domain_compatible(value):
-				print_rich("[color=yellow][WARN] DTag: \"%s\" tag is incompatible with domain \"%s\", will be reset to &\"\".[/color]" % [value, ".".join(domain)])
+		if Engine.is_editor_hint():
+			domain = v
+			if not value.is_empty() and not is_domain_compatible(value):
+				print_rich("[color=yellow][DTag]: \"%s\" tag is incompatible with domain \"%s\", will be reset to &\"\".[/color]" % [value, ".".join(domain)])
 				value = &""
+		else:
+			domain.assign(redirect(".".join(v)).split(".", false))
 		notify_property_list_changed()
 ## Tag actual value.
 @export_storage var value :StringName = &""
 
-const TAG_ALAIS := &"tag"
+const VALUE_ALIAS := &"tag"
 
 
 func _get_property_list() -> Array[Dictionary]:
 	var ret :Array[Dictionary] = [
 		{
-			name = TAG_ALAIS,
+			name = VALUE_ALIAS,
 			type = TYPE_STRING_NAME,
 			hint = PROPERTY_HINT_NONE,
 			hint_string = "DTagEdit" if domain.is_empty() else ("DTagEdit: " + ".".join(domain)),
@@ -33,7 +35,7 @@ func _get_property_list() -> Array[Dictionary]:
 
 func _get(property: StringName) -> Variant:
 	match property:
-		TAG_ALAIS:
+		VALUE_ALIAS:
 			return value
 		_:
 			return null
@@ -41,7 +43,7 @@ func _get(property: StringName) -> Variant:
 
 func _set(property: StringName, p_value: Variant) -> bool:
 	match property:
-		TAG_ALAIS:
+		VALUE_ALIAS:
 			if domain.is_empty():
 				value = p_value
 				domain.assign(value.split(".", false))
@@ -55,20 +57,21 @@ func _set(property: StringName, p_value: Variant) -> bool:
 					for i in range(mini(domain.size(), splits.size())):
 						if domain[i] != splits[i]:
 							valid = false
+							printerr('Set property "tag" failed, new tag ”%s“ is incompatible with required domain "%s". If it is expect, please clear "domain" first.' % [p_value, ".".join(domain)])
 							break
 
 					if valid:
 						value = p_value
 						notify_property_list_changed()
 				else:
-					value = p_value
+					value = redirect(p_value)
 
 			return true
 		_:
 			return false
 
 
-func is_equal(other_tag: Variant) -> bool:
+func is_tag_equal(other_tag: Variant) -> bool:
 	assert(other_tag is DTag or other_tag is StringName)
 	if other_tag is DTag:
 		return value == other_tag.value
@@ -104,9 +107,10 @@ func is_domain_compatible(other_domain: Variant) -> bool:
 	return false
 
 
+#region Static
 static var _tag_cache: Dictionary[StringName, DTag]
 ## Create tag from StringName with caching.
-static func from(p_tag: StringName) -> DTag:
+static func as_tag(p_tag: StringName) -> DTag:
 	if Engine.is_editor_hint():
 		var ret := DTag.new()
 		ret.tag = p_tag
@@ -134,3 +138,16 @@ static func as_domain(p_domain: StringName) -> DTag:
 		ret.domain = p_domain.split(".", false)
 		_domain_cache[p_domain] = ret
 		return ret
+
+
+static var _dtag_def: GDScript:
+	get:
+		if not is_instance_valid(_dtag_def):
+			_dtag_def = ResourceLoader.load("res://dtag_def.gen.gd", "GDScript", ResourceLoader.CACHE_MODE_REUSE)
+		assert(is_instance_valid(_dtag_def))
+		return _dtag_def
+# Redirect tag.
+static func redirect(ori_tag: StringName) -> StringName:
+	return _dtag_def[&"_REDIRECT_NAP"].get(ori_tag, ori_tag)
+
+#endregion Static
