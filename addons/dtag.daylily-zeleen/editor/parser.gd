@@ -176,20 +176,30 @@ static func parse_format_errors(text: String, limit := -1) -> Dictionary[int, St
 		var identifier := splits[0]
 		var redirect := splits[1] if splits.size() == 2 else ""
 
+		var empty_line_check_ref := [0, false]
 		if indent_count > 0:
 			if identifier.begins_with("@"):
 				var func_check_indent := func(idx: int) -> bool:
 					var prev := lines[idx]
 					var stripped := prev.strip_edges()
 					if stripped.is_empty():
+						if not empty_line_check_ref[1]:
+							empty_line_check_ref[0] += 1
 						return false
+
 					if stripped.begins_with("#"):
 						return false
+
+					empty_line_check_ref[1] = true
 					var prev_indent_count := _get_indent_count(prev)
 
 					if stripped.begins_with("@"):
 						if indent_count - prev_indent_count in [0, 1]:
 							return true
+					else:
+						if prev_indent_count == 0:
+							err_lines[line] = "ERROR: this domain should be owned to an parent domain."
+							return false
 					return false
 
 				var valid := false
@@ -208,9 +218,14 @@ static func parse_format_errors(text: String, limit := -1) -> Dictionary[int, St
 					var prev := lines[idx]
 					var stripped := prev.strip_edges()
 					if stripped.is_empty():
+						if not empty_line_check_ref[1]:
+							empty_line_check_ref[0] += 1
 						return false
+
 					if stripped.begins_with("#"):
 						return false
+
+					empty_line_check_ref[1] = true
 					var prev_indent_count := _get_indent_count(prev)
 					if stripped.begins_with("@"):
 						if indent_count - prev_indent_count == 1:
@@ -220,6 +235,10 @@ static func parse_format_errors(text: String, limit := -1) -> Dictionary[int, St
 						if indent_count == prev_indent_count:
 							has_domain_ref[0] = true
 							return true
+
+						if prev_indent_count == 0:
+							err_lines[line] = "ERROR: this tag should be owned to a domain.11"
+							return false
 					return false
 
 				var valid := false
@@ -248,5 +267,8 @@ static func parse_format_errors(text: String, limit := -1) -> Dictionary[int, St
 				if not id.is_valid_identifier():
 					err_lines[line] = "ERROR: \"%s\" is not a valid identifier." % id
 					break
+
+		if not err_lines.has(line) and indent_count > 0 and empty_line_check_ref[0] > 2:
+			err_lines[line] = "WARN: this sub level line is far from previous level (more than 2 empty line)."
 
 	return err_lines
