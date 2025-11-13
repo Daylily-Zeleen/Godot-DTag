@@ -47,30 +47,39 @@ static func parse(text: String, r_err_info: Dictionary[int, String] = {}) -> Dic
 					else:
 						ret[domain.name] = domain
 				else:
-					assert(curr_domain)
-					domain.parent_domain = curr_domain.parent_domain
-
-					if curr_domain.parent_domain.sub_domain_list.has(domain.name):
-						if not i in r_err_info:
-							r_err_info[i] = "ERROR: duplicate identifier \"%s\"." % domain.name
+					if not is_instance_valid(curr_domain):
+						r_err_info[i] = "ERROR: need a parent domain."
 					else:
-						curr_domain.parent_domain.sub_domain_list[domain.name] = domain
+						domain.parent_domain = curr_domain.parent_domain
+
+						if curr_domain.parent_domain.sub_domain_list.has(domain.name):
+							if not i in r_err_info:
+								r_err_info[i] = "ERROR: duplicate identifier \"%s\"." % domain.name
+						else:
+							curr_domain.parent_domain.sub_domain_list[domain.name] = domain
+							domain.parent_domain = curr_domain.parent_domain
 			elif indent_count == curr_indent + 1:
-				if curr_domain.sub_domain_list.has(domain.name):
+				if not is_instance_valid(curr_domain):
+					r_err_info[i] = "ERROR: need a parent domain."
+				elif curr_domain.sub_domain_list.has(domain.name):
 					if not i in r_err_info:
 						r_err_info[i] = "ERROR: duplicate identifier \"%s\"." % domain.name
 				else:
 					curr_domain.sub_domain_list[domain.name] = domain
+					domain.parent_domain = curr_domain
 			elif indent_count < curr_indent:
-				var parent := curr_domain.parent_domain
-				var dedent_count := curr_indent - indent_count -1
-				while dedent_count > 0:
-					dedent_count -= 1
-					parent = parent.parent_domain
-				assert(parent or indent_count == 0, "indent: %s" %indent_count)
-				domain.parent_domain = parent
-				if not domain.parent_domain:
-					ret[domain.name] = domain
+				if not is_instance_valid(curr_domain):
+					r_err_info[i] = "ERROR: need a parent domain."
+				else:
+					var parent := curr_domain.parent_domain
+					var dedent_count := curr_indent - indent_count -1
+					while dedent_count > 0:
+						dedent_count -= 1
+						parent = parent.parent_domain
+					assert(parent or indent_count == 0, "indent: %s" %indent_count)
+					domain.parent_domain = parent
+					if not domain.parent_domain:
+						ret[domain.name] = domain
 
 			curr_indent = indent_count
 			curr_domain = domain
@@ -86,13 +95,23 @@ static func parse(text: String, r_err_info: Dictionary[int, String] = {}) -> Dic
 				else:
 					ret[tag.name] = tag
 			else:
-				assert(curr_indent + 1 == indent_count)
-				assert(curr_domain)
-				if curr_domain.tag_list.has(tag.name):
-					if not i in r_err_info:
-						r_err_info[i] = "ERROR: duplicate identifier \"%s\"." % tag.name
+				if not is_instance_valid(curr_domain):
+					r_err_info[i] = "ERROR: need a parent domain."
 				else:
-					curr_domain.tag_list[tag.name] = tag
+					var domain_indent := curr_indent
+					var domain := curr_domain
+					while domain_indent + 1 > indent_count and is_instance_valid(domain):
+						domain_indent -= 1
+						domain = curr_domain.parent_domain
+
+					if indent_count - 1 != domain_indent or not is_instance_valid(domain):
+						if not i in r_err_info:
+							r_err_info[i] = "ERROR: error indent level.11"
+					else:
+						if curr_domain.tag_list.has(tag.name):
+							r_err_info[i] = "ERROR: duplicate identifier \"%s\"." % tag.name
+						else:
+							domain.tag_list[tag.name] = tag
 
 	return ret
 
@@ -157,62 +176,88 @@ static func parse_format_errors(text: String, limit := -1) -> Dictionary[int, St
 		var identifier := splits[0]
 		var redirect := splits[1] if splits.size() == 2 else ""
 
-		if identifier.begins_with("@"):
-			if indent_count > 0:
-				for idx in range(line - 1, -1, -1):
+		var empty_line_check_ref := [0, false]
+		if indent_count > 0:
+			if identifier.begins_with("@"):
+				var func_check_indent := func(idx: int) -> bool:
 					var prev := lines[idx]
 					var stripped := prev.strip_edges()
 					if stripped.is_empty():
-						continue
+						if not empty_line_check_ref[1]:
+							empty_line_check_ref[0] += 1
+						return false
+
 					if stripped.begins_with("#"):
-						continue
+						return false
+
+					empty_line_check_ref[1] = true
 					var prev_indent_count := _get_indent_count(prev)
 
 					if stripped.begins_with("@"):
 						if indent_count - prev_indent_count in [0, 1]:
-							break
-						else:
-							err_lines[line] = "ERROR: Error indent level."
-							break
+							return true
+					else:
+						if prev_indent_count == 0:
+							err_lines[line] = "ERROR: this domain should be owned to an parent domain."
+							return false
+					return false
+
+				var valid := false
+				for idx in range(line - 1, -1, -1):
+					if func_check_indent.call(idx):
+						valid = true
+						break
+					if err_lines.has(line):
+						break
+
+				if not valid and not err_lines.has(line):
+					err_lines[line] = "ERROR: error indent level."
+			else:
+				var has_domain_ref := [false]
+				var func_check_indent := func(idx: int, p_has_domain_ref: Array) -> bool:
+					var prev := lines[idx]
+					var stripped := prev.strip_edges()
+					if stripped.is_empty():
+						if not empty_line_check_ref[1]:
+							empty_line_check_ref[0] += 1
+						return false
+
+					if stripped.begins_with("#"):
+						return false
+
+					empty_line_check_ref[1] = true
+					var prev_indent_count := _get_indent_count(prev)
+					if stripped.begins_with("@"):
+						if indent_count - prev_indent_count == 1:
+							has_domain_ref[0] = true
+							return true
 					else:
 						if indent_count == prev_indent_count:
-							break
-						else:
-							err_lines[line] = "ERROR: Error indent level."
-							break
+							has_domain_ref[0] = true
+							return true
 
-			identifier = identifier.substr(1)
-		elif indent_count > 0:
-			var has_domain:=false
-			for idx in range(line - 1, -1, -1):
-				var prev := lines[idx]
-				var stripped := prev.strip_edges()
-				if stripped.is_empty():
-					continue
-				if stripped.begins_with("#"):
-					continue
-				var prev_indent_count := _get_indent_count(prev)
-				if stripped.begins_with("@"):
-					if indent_count - prev_indent_count == 1:
-						has_domain = true
+						if prev_indent_count == 0:
+							err_lines[line] = "ERROR: this tag should be owned to a domain.11"
+							return false
+					return false
+
+				var valid := false
+				for idx in range(line - 1, -1, -1):
+					if func_check_indent.call(idx, has_domain_ref):
+						valid = true
 						break
-					else:
-						err_lines[line] = "ERROR: Error indent level."
-						break
-				else:
-					if indent_count == prev_indent_count:
-						has_domain = true
-						break
-					else:
-						err_lines[line] = "ERROR: Error indent level."
+					if err_lines.has(line):
 						break
 
-			if not err_lines.has(line) and not has_domain:
-				err_lines[line] = "ERROR: tag should be owned to a domain."
+				var has_domain := has_domain_ref[0] as bool
+				if not err_lines.has(line) and not has_domain:
+					err_lines[line] = "ERROR: this tag should be owned to a domain."
 
 		if err_lines.has(line):
 			continue
 
+		if identifier.begins_with("@"):
+			identifier = identifier.substr(1)
 		if not identifier.strip_edges().is_valid_identifier():
 			err_lines[line] = "ERROR: \"%s\" is not a valid identifier." % identifier
 			continue
@@ -222,5 +267,8 @@ static func parse_format_errors(text: String, limit := -1) -> Dictionary[int, St
 				if not id.is_valid_identifier():
 					err_lines[line] = "ERROR: \"%s\" is not a valid identifier." % id
 					break
+
+		if not err_lines.has(line) and indent_count > 0 and empty_line_check_ref[0] > 2:
+			err_lines[line] = "WARN: this sub level line is far from previous level (more than 2 empty line)."
 
 	return err_lines

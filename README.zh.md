@@ -38,7 +38,6 @@ DTag，为 Godot 提供一个类似 Unreal Engine 中 GameplayTag 的 Tag 机制
 - 使用 "#" 作为注释。
 - 使用 "##" 作为特定域或标签的注释。
 - Tag 和 Tag Domain 必须是有效的标识符。
-- 子级 Domain 必须定义在 父级 Domain 的 Tag 之后。
 
 每行的具体语法顺序如下([]中为可选内容)
 ```
@@ -56,7 +55,6 @@ DTag，为 Godot 提供一个类似 Unreal Engine 中 GameplayTag 的 Tag 机制
 # Use "#" for comments.
 # Use "##" for comments on specific domains or tags.
 # Tags and Tag Domains must be valid identifiers.
-# Child Domains must be defined after the parent Domain's Tags.
 #
 # Syntax: Content of "[]" are optional.
 # [@]DomainOrTag [-> Redirect.To.New.DomainOrTag] [## Any comment of this domain or Tag]

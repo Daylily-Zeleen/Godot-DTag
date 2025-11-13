@@ -35,7 +35,6 @@ The syntax of ".dtag" are very simple:
 - Use "#" for comments.
 - Use "##" for comments on specific domains or tags.
 - Tags and Tag Domains must be valid identifiers.
-- Child Domains must be defined after the parent Domain's Tags.
 
 The specific syntax order for each line is as follows ([] indicates optional content)
 ```
@@ -53,7 +52,6 @@ Example:
 # Use "#" for comments.
 # Use "##" for comments on specific domains or tags.
 # Tags and Tag Domains must be valid identifiers.
-# Child Domains must be defined after the parent Domain's Tags.
 #
 # Syntax: Content of "[]" are optional.
 # [@]DomainOrTag [-> Redirect.To.New.DomainOrTag] [## Any comment of this domain or Tag]
