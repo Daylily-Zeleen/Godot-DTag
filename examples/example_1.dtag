@@ -4,7 +4,6 @@
 # Use "#" for comments.
 # Use "##" for comments on specific domains or tags.
 # Tags and Tag Domains must be valid identifiers.
-# Child Domains must be defined after the parent Domain's Tags.
 #
 # Syntax: Content of "[]" are optional.
 # [@]DomainOrTag [-> Redirect.To.New.DomainOrTag] [## Any comment of this domain or Tag]
