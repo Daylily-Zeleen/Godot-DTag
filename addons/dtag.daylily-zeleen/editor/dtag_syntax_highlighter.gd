@@ -3,11 +3,14 @@ extends "editor_code_highlighter.gd"
 
 const _Parser := preload("parser.gd")
 
-func _get_color(editor_setting_name: String) -> Color:
-	return EditorInterface.get_editor_settings().get_setting(editor_setting_name)
+static func _get_color(editor_setting_name: String) -> Color:
+	return CustomCodeEdit._get_color(editor_setting_name)
 
 
 class CustomCodeEdit extends CodeEdit:
+	static func _get_color(editor_setting_name: String) -> Color:
+		return EditorInterface.get_editor_settings().get_setting(editor_setting_name)
+
 	var err_lines: Dictionary[int, String]
 
 	func _init() -> void:
@@ -38,12 +41,20 @@ class CustomCodeEdit extends CodeEdit:
 			_Parser.parse(text, errors)
 
 		# Recover
-		for line in err_lines:
-			if not line in errors:
-				set_line_background_color(line, Color(0.0, 0.0 ,0.0, 0.0))
+		for l in get_line_count():
+			set_line_background_color(l, Color(0.0, 0.0 ,0.0, 0.0))
+
 		# Apply
+		var _mark_color := _get_color("text_editor/theme/highlighting/mark_color")
+		var _warn_color := _get_color("text_editor/theme/highlighting/warning_color")
 		for line in errors:
-			set_line_background_color(line, Color.INDIAN_RED)
+			var line_text := errors[line]
+			if line_text.begins_with("ERROR"):
+				set_line_background_color(line, _mark_color)
+			elif line_text.begins_with("WARN"):
+				set_line_background_color(line, _warn_color)
+			else:
+				assert(false, "Unexpected case.")
 
 		err_lines = errors
 		return err_lines.is_empty()
@@ -84,6 +95,9 @@ class CustomCodeEdit extends CodeEdit:
 		label.text = for_text
 		if for_text.begins_with("ERROR"):
 			label.modulate = Color.ORANGE_RED
+		elif for_text.begins_with("WARN"):
+			label.modulate = Color.YELLOW
+
 		return label
 
 	func _get_err_msg(at_position: Vector2 = get_local_mouse_pos()) -> String:
