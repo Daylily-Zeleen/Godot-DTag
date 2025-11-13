@@ -12,6 +12,9 @@ extends Resource
 @export_custom(PROPERTY_HINT_TYPE_STRING, "%s:DTagEditor" % TYPE_STRING_NAME) var tag_list: Array[StringName]
 
 
+@export_custom(PROPERTY_HINT_TYPE_STRING, "%s:DTagEditor : TopLevelDomain" % TYPE_STRING_NAME) var tag_list2: Array[StringName]
+
+
 @export_group("Tag Domain")
 ## Select any domain (String/StringName).
 @export_custom(PROPERTY_HINT_NONE, "DTagDomainEdit") var tag_domain_text: StringName

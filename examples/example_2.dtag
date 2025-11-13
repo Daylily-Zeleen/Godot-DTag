@@ -18,9 +18,3 @@
 
 TagWithoutDomain2 ## Tag without domain
 TagWithoutDomain3 ## Tag without domain1
-
-
-@MainDomain ## Desc
-	Tag2
-	@Domain -> RedirectTo.New.Domain ## Desc
-		Tag1 ## Will be redirected to "RedirectTo.New.Domain.Tag2"

@@ -1,0 +1,72 @@
+diff --git a/parser.gd b/../../../../../ProjectAlliance/Engine/addons/dtag.daylily-zeleen/editor/parser.gd
+index 38b8115..88dc9cf 100644
+--- a/parser.gd
++++ b/../../../../../ProjectAlliance/Engine/addons/dtag.daylily-zeleen/editor/parser.gd
+@@ -37,6 +37,7 @@ static func parse(text: String, r_err_info: Dictionary[int, String] = {}) -> Dic
+ 		if identifiler.begins_with("@"):
+ 			var domain := DomainDef.new()
+ 			domain.name = identifiler.trim_prefix("@").strip_edges()
++			print(domain.name)
+ 			domain.redirect = redirect
+ 			domain.desc = comment
+ 			if indent_count == curr_indent:
+@@ -48,8 +49,8 @@ static func parse(text: String, r_err_info: Dictionary[int, String] = {}) -> Dic
+ 						ret[domain.name] = domain
+ 				else:
+ 					assert(curr_domain)
++					print("parent ",domain.name)
+ 					domain.parent_domain = curr_domain.parent_domain
+-
+ 					if curr_domain.parent_domain.sub_domain_list.has(domain.name):
+ 						if not i in r_err_info:
+ 							r_err_info[i] = "ERROR: duplicate identifier \"%s\"." % domain.name
+@@ -61,6 +62,7 @@ static func parse(text: String, r_err_info: Dictionary[int, String] = {}) -> Dic
+ 						r_err_info[i] = "ERROR: duplicate identifier \"%s\"." % domain.name
+ 				else:
+ 					curr_domain.sub_domain_list[domain.name] = domain
++					domain.parent_domain = curr_domain
+ 			elif indent_count < curr_indent:
+ 				var parent := curr_domain.parent_domain
+ 				var dedent_count := curr_indent - indent_count -1
+@@ -169,16 +171,18 @@ static func parse_format_errors(text: String, limit := -1) -> Dictionary[int, St
+ 					var prev_indent_count := _get_indent_count(prev)
+ 
+ 					if stripped.begins_with("@"):
+-						if indent_count - prev_indent_count in [0, 1]:
+-							break
+-						else:
+-							err_lines[line] = "ERROR: Error indent level."
+-							break
++						break
++						#if indent_count - prev_indent_count in [0, 1]:
++							#break
++						#else:
++							#err_lines[line] = "ERROR: Error indent level."
++							#break
+ 					else:
++						break
+ 						if indent_count == prev_indent_count:
+ 							break
+ 						else:
+-							err_lines[line] = "ERROR: Error indent level."
++							err_lines[line] = "ERROR: Error indent level.1"
+ 							break
+ 
+ 			identifier = identifier.substr(1)
+@@ -197,14 +201,14 @@ static func parse_format_errors(text: String, limit := -1) -> Dictionary[int, St
+ 						has_domain = true
+ 						break
+ 					else:
+-						err_lines[line] = "ERROR: Error indent level."
++						err_lines[line] = "ERROR: Error indent level.2"
+ 						break
+ 				else:
+ 					if indent_count == prev_indent_count:
+ 						has_domain = true
+ 						break
+ 					else:
+-						err_lines[line] = "ERROR: Error indent level."
++						err_lines[line] = "ERROR: Error indent level.3"
+ 						break
+ 
+ 			if not err_lines.has(line) and not has_domain:

@@ -1,0 +1,11 @@
+# Demonstrates the bug fixes I implemented
+# Note: The fix for an error that occurs when file has no redirectors cannot be 
+# tested unless the other example files are deleted/moved.
+
+@TopLevelDomain
+	@SubDomain1
+		Tag1
+		Tag2
+	@Subdomain2
+		Tag1
+		Tag2

@@ -7,6 +7,7 @@ script = ExtResource("1_2napx")
 tag1 = &"TagWithoutDomain"
 tag2 = &"MainDomain.Domain.Tag3"
 tag_list = Array[StringName]([&"RedirectTo.New.Tag"])
+tag_list2 = Array[StringName]([&""])
 tag_domain_text = &"MainDomain"
 tag_domain_text_with_limit = &"MainDomain.Domain"
 tag_domain_text_list = Array[StringName]([&"RedirectTo.New.Domain"])

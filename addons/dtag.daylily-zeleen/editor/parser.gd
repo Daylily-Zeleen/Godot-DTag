@@ -61,6 +61,7 @@ static func parse(text: String, r_err_info: Dictionary[int, String] = {}) -> Dic
 						r_err_info[i] = "ERROR: duplicate identifier \"%s\"." % domain.name
 				else:
 					curr_domain.sub_domain_list[domain.name] = domain
+					domain.parent_domain = curr_domain #INFO: This allows same-level sub-domains with child tags.
 			elif indent_count < curr_indent:
 				var parent := curr_domain.parent_domain
 				var dedent_count := curr_indent - indent_count -1
@@ -168,18 +169,21 @@ static func parse_format_errors(text: String, limit := -1) -> Dictionary[int, St
 						continue
 					var prev_indent_count := _get_indent_count(prev)
 
-					if stripped.begins_with("@"):
-						if indent_count - prev_indent_count in [0, 1]:
-							break
-						else:
-							err_lines[line] = "ERROR: Error indent level."
-							break
-					else:
-						if indent_count == prev_indent_count:
-							break
-						else:
-							err_lines[line] = "ERROR: Error indent level."
-							break
+					
+					#INFO: 	Removing this check, paired with other changes, allows multiple sub-domains each with sub-tags.
+					#		I am concerned what bugs this check was meant to fix, but for now, removing it doesn't seem to cause problems.
+					#if stripped.begins_with("@"):
+						#if indent_count - prev_indent_count in [0, 1]:
+							#break
+						#else:
+							#err_lines[line] = "ERROR: Error indent level."
+							#break
+					#else:
+						#if indent_count == prev_indent_count:
+							#break
+						#else:
+							#err_lines[line] = "ERROR: Error indent level."
+							#break
 
 			identifier = identifier.substr(1)
 		elif indent_count > 0:
