@@ -157,7 +157,7 @@ func _setup_item_recursively(parent: TreeItem, def: Script) -> void:
 	var keys :Array[StringName]
 	var redirected_keys: Array[StringName]
 	for k: String in const_map:
-		if k in [&"DOMAIN_NAME", &"_REDIRECT_NAP"]:
+		if k in [&"DOMAIN_NAME", &"_REDIRECT_MAP"]:
 			continue
 
 		var next_def: Variant = const_map[k]

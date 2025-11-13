@@ -33,9 +33,11 @@ func generate(parse_result: Dictionary[String, RefCounted], redirect_map: Dictio
 			text += _generate_doman_class_recursively(def, "", identifiers)
 			text += "\n"
 
+	text += "# ===== Redirect map. =====\n"
+	text += "const _REDIRECT_MAP: Dictionary[StringName, StringName] = {"
 	if not redirect_map.is_empty():
-		text += "# ===== Redirect map. =====\n"
-		text += "const _REDIRECT_NAP: Dictionary[StringName, StringName] = {\n"
+		text += "\n"
+
 		for k in redirect_map:
 			var redirected := redirect_map[k]
 			while redirect_map.has(redirected):
@@ -45,7 +47,7 @@ func generate(parse_result: Dictionary[String, RefCounted], redirect_map: Dictio
 					break
 				redirected = next
 			text += '\t&"%s" : &"%s",\n' % [k, redirect_map[k]]
-		text += "}\n"
+	text += "}\n"
 
 	fa.store_string(text)
 	fa.close()
