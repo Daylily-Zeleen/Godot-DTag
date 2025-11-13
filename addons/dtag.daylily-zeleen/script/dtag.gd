@@ -148,6 +148,6 @@ static var _dtag_def: GDScript:
 		return _dtag_def
 # Redirect tag.
 static func redirect(ori_tag: StringName) -> StringName:
-	return _dtag_def[&"_REDIRECT_NAP"].get(ori_tag, ori_tag)
+	return _dtag_def[&"_REDIRECT_MAP"].get(ori_tag, ori_tag)
 
 #endregion Static

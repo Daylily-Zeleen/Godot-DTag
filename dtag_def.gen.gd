@@ -53,7 +53,7 @@ const TagWithoutDomain3 = &"TagWithoutDomain3"
 
 
 # ===== Redirect map. =====
-const _REDIRECT_NAP: Dictionary[StringName, StringName] = {
+const _REDIRECT_MAP: Dictionary[StringName, StringName] = {
 	&"MainDomain.Tag1" : &"RedirectTo.New.Tag",
 	&"MainDomain.Domain" : &"RedirectTo.New.Domain",
 	&"MainDomain.Domain.Tag2" : &"RedirectTo.New.Domain.Tag2",
