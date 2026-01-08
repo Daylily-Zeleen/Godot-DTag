@@ -127,7 +127,7 @@ static func _parse_line(line: String) -> Array:
 
 	var redirect := ""
 	var redirect_idx := line.find("->")
-	if redirect_idx < comment_idx and redirect_idx >= 0:
+	if (comment_idx < 0 or redirect_idx < comment_idx) and redirect_idx >= 0:
 		redirect = line.substr(redirect_idx + 2).strip_edges()
 		line = line.substr(0, redirect_idx)
 
