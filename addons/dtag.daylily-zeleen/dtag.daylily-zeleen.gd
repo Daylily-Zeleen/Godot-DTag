@@ -69,6 +69,10 @@ func _enter_tree() -> void:
 		extensions += ",dtag"
 	ProjectSettings.set_setting(OVERRIDE_SETTING_TEXTFILE_EXTENSIONS, extensions)
 	
+	print_rich("[color=green][DTag] Plugin enabled. "
+		+ "For VS Code support, install the extension: "
+		+ "[url]https://github.com/Daylily-Zeleen/VSCode-Godot-DTag[/url].[/color]")
+
 	_selector = preload("editor/dtag_selector.tscn").instantiate()
 	add_child(_selector)
 	

@@ -21,6 +21,8 @@ Godot-DTag provides a Tag mechanism similar to Unreal Engine's GameplayTag for G
 
 This plugin is entirely implemented in GDScript. You can add it to your project like a regular plugin and enable the "Godot - DTag" plugin in the project setting.
 
+> 💡 **VS Code users**: Install the [VSCode-Godot-DTag](https://github.com/Daylily-Zeleen/VSCode-Godot-DTag) extension for syntax highlighting and real-time diagnostics when editing `.dtag` files outside Godot.
+
 ## How to Use (Basic)
 
 ![](.doc/Basic.gif)

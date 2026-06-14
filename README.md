@@ -23,6 +23,13 @@ Godot-DTag provides a Tag mechanism similar to Unreal Engine's GameplayTag for G
 
 ## 2. [Click for detail document](addons/dtag.daylily-zeleen/README.md)
 
+
+## 3. VS Code Extension
+
+Edit `.dtag` files with syntax highlighting and real-time diagnostics in VS Code:
+
+👉 [github.com/Daylily-Zeleen/VSCode-Godot-DTag](https://github.com/Daylily-Zeleen/VSCode-Godot-DTag)
+
 ---------------------------
 
 DTag，为 Godot 提供一个类似 Unreal Engine 中 GameplayTag 的 Tag 机制。
@@ -40,3 +47,9 @@ DTag，为 Godot 提供一个类似 Unreal Engine 中 GameplayTag 的 Tag 机制
 - 支持添加自定义代码生成器来生成适合你的DTag定义代码，如生成 DTag 的C#定义脚本等。
 
 ## 2. [点击此处详细文档](addons/dtag.daylily-zeleen/README.zh.md)
+
+## 3. VS Code 扩展
+
+在 VS Code 中编辑 `.dtag` 文件，获得语法高亮和实时错误诊断：
+
+👉 [github.com/Daylily-Zeleen/VSCode-Godot-DTag](https://github.com/Daylily-Zeleen/VSCode-Godot-DTag)

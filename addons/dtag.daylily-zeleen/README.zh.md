@@ -22,6 +22,8 @@ DTag，为 Godot 提供一个类似 Unreal Engine 中 GameplayTag 的 Tag 机制
 
 该插件完全由 GDScript 实现，你可以像普通插件一样加入到你的项目，并在项目设置中启用 “Godot - DTag” 插件即可。
 
+> 💡 **VS Code 用户**：安装 [VSCode-Godot-DTag](https://github.com/Daylily-Zeleen/VSCode-Godot-DTag) 扩展，可在 VS Code 中编辑 `.dtag` 文件时获得语法高亮和实时错误诊断。
+
 ## 如何使用 (基础篇)
 
 ![](.doc/Basic.gif)
