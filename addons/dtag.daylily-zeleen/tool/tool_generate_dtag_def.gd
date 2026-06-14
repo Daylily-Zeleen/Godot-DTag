@@ -35,7 +35,7 @@ static func get_dtag_recursively(base_dir := "res://", r_files: PackedStringArra
 	return r_files
 
 
-static func generate(files: PackedStringArray, generaters: Array[Object]) -> void:
+static func generate(files: PackedStringArray, generators: Array[Object]) -> void:
 	var validated: PackedStringArray
 	for f in files:
 		if f.get_extension().to_lower() != "dtag":
@@ -119,18 +119,18 @@ static func generate(files: PackedStringArray, generaters: Array[Object]) -> voi
 
 	# Generate
 	var generated: PackedStringArray
-	var default_gen := preload("../generater/gen_dtag_def_gdscript.gd").new()
+	var default_gen := preload("../generator/gen_dtag_def_gdscript.gd").new()
 	generated.push_back(default_gen.generate(merge_result, redirect_map))
-	for g in generaters:
+	for g in generators:
 		generated.push_back(g.generate(merge_result, redirect_map))
 
 	# Check redirect target.
 	for tag_text in redirect_map:
 		var target := redirect_map[tag_text]
 		if not cache_info.has(target):
-			print_rich("[color=yellow][DTag] Redirect taget \"%s\" is not exists.[/color]" % target)
+			print_rich("[color=yellow][DTag] Redirect target \"%s\" is not exists.[/color]" % target)
 
-	# Refrech
+	# Refresh
 	for f in generated:
 		if f.is_empty():
 			continue
@@ -183,7 +183,7 @@ static func _merge_parse_results(parse_results: Dictionary[String, Dictionary], 
 					ret[n] = def
 					tag_to_file[n] = file
 			elif def is DomainDef:
-				__merge_resursively(file, [], def, ret, r_errors, tag_to_file)
+				__merge_recursively(file, [], def, ret, r_errors, tag_to_file)
 	return ret
 
 
@@ -201,7 +201,7 @@ static func __get_domain_def(route: Array[String], result: Dictionary[String, Re
 	return ret
 
 
-static func __merge_resursively(file:String, cur_route: Array[String], domain: DomainDef, r_result: Dictionary[String, RefCounted], 
+static func __merge_recursively(file:String, cur_route: Array[String], domain: DomainDef, r_result: Dictionary[String, RefCounted], 
 	r_errors: PackedStringArray,
 	r_tag_to_file: Dictionary[String, String] = {},
 ) -> void:
@@ -222,7 +222,7 @@ static func __merge_resursively(file:String, cur_route: Array[String], domain: D
 				r_tag_to_file[tag_text] = file
 		# Sub Domain
 		for d in domain.sub_domain_list:
-			__merge_resursively(file, next_route, domain.sub_domain_list[d], r_result, r_errors, r_tag_to_file)
+			__merge_recursively(file, next_route, domain.sub_domain_list[d], r_result, r_errors, r_tag_to_file)
 		# Info
 		if exists_domain.redirect.is_empty():
 			exists_domain.redirect = domain.redirect

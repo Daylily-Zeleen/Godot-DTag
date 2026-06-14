@@ -34,8 +34,8 @@ var _selector: Window
 var _inspector_plugin: EditorInspectorPluginTag
 var _highlighter := preload("editor/dtag_syntax_highlighter.gd").new()
 
-const ESETTING_TEXTFILE_EXTENDSIONS := "docks/filesystem/textfile_extensions"
-const OVERRIDE_SETTING_TEXTFILE_EXTENDSIONS := "editor_overrides/docks/filesystem/textfile_extensions"
+const EDITOR_SETTING_TEXTFILE_EXTENSIONS := "docks/filesystem/textfile_extensions"
+const OVERRIDE_SETTING_TEXTFILE_EXTENSIONS := "editor_overrides/docks/filesystem/textfile_extensions"
 
 const SETTINGS_CODE_GENERATOR := "DTag/basic/code_generators"
 
@@ -54,10 +54,10 @@ func _enter_tree() -> void:
 	ProjectSettings.add_property_info(property_info)
 
 	# Settings recognize "*.dtag"
-	if not ProjectSettings.has_setting(OVERRIDE_SETTING_TEXTFILE_EXTENDSIONS):
-		ProjectSettings.set_setting(OVERRIDE_SETTING_TEXTFILE_EXTENDSIONS, EditorInterface.get_editor_settings().get_setting(ESETTING_TEXTFILE_EXTENDSIONS))
+	if not ProjectSettings.has_setting(OVERRIDE_SETTING_TEXTFILE_EXTENSIONS):
+		ProjectSettings.set_setting(OVERRIDE_SETTING_TEXTFILE_EXTENSIONS, EditorInterface.get_editor_settings().get_setting(EDITOR_SETTING_TEXTFILE_EXTENSIONS))
 
-	var extensions := ProjectSettings.get_setting_with_override(OVERRIDE_SETTING_TEXTFILE_EXTENDSIONS) as String
+	var extensions := ProjectSettings.get_setting_with_override(OVERRIDE_SETTING_TEXTFILE_EXTENSIONS) as String
 	var valid := false
 	for e in extensions.split(","):
 		if e.strip_edges() == "dtag":
@@ -65,7 +65,7 @@ func _enter_tree() -> void:
 			break
 	if not valid:
 		extensions += ",dtag"
-	ProjectSettings.set_setting(OVERRIDE_SETTING_TEXTFILE_EXTENDSIONS, extensions)
+	ProjectSettings.set_setting(OVERRIDE_SETTING_TEXTFILE_EXTENSIONS, extensions)
 	
 	_selector = preload("editor/dtag_selector.tscn").instantiate()
 	add_child(_selector)

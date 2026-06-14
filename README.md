@@ -23,7 +23,7 @@ Godot-DTag provides a Tag mechanism similar to Unreal Engine's GameplayTag for G
 
 ## 2. [Click for detail document](addons/dtag.daylily-zeleen/README.md)
 
-----------------------------------------------------------------------------
+---------------------------
 
 DTag，为 Godot 提供一个类似 Unreal Engine 中 GameplayTag 的 Tag 机制。
 

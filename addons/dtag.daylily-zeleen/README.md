@@ -244,7 +244,7 @@ This plugin provides editor plugins that use a special selector to choose Tags o
 You can add custom code generators through the "DTag/basic/code_generators" option in project settings, such as generating C# definition scripts for DTag.
 Custom code generators must be marked as tool scripts and have a generation function with the signature `func generate(parse_result: Dictionary[String, RefCounted], redirect_map: Dictionary[String, String]) -> String`, returning the generated file path.
 
-Example: (Only print the keys of the parse result as a demonstration. Please refer to "res://addons/dtag.daylily-zeleen/generater/gen_dtag_def_gdscript.gd" for more details)
+Example: (Only print the keys of the parse result as a demonstration. Please refer to "res://addons/dtag.daylily-zeleen/generator/gen_dtag_def_gdscript.gd" for more details)
 
 ```GDScript
 # res://example/example_generator.gd

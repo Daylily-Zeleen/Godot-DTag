@@ -245,7 +245,7 @@ func example() -> void:
 可以通过项目设置中的 "DTag/basic/code_generators” 选项添加自定义的代码生成器，如生成 DTag 的C#定义脚本等。
 自定义代码生成器必须标记为工具脚本，且拥有一个签名为`func generate(parse_result: Dictionary[String, RefCounted], redirect_map: Dictionary[String, String]) -> String` 的生成函数，返回值为生成的文件路径。
 
-示例：（仅输出解析结果的键作为演示，具体请参考 "res://addons/dtag.daylily-zeleen/generater/gen_dtag_def_gdscript.gd"）
+示例：（仅输出解析结果的键作为演示，具体请参考 "res://addons/dtag.daylily-zeleen/generator/gen_dtag_def_gdscript.gd"）
 
 ```GDScript
 # res://example/example_generator.gd

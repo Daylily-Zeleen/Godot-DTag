@@ -32,7 +32,7 @@ func generate(parse_result: Dictionary[String, RefCounted], redirect_map: Dictio
 	text += "\n"
 	for def in parse_result.values():
 		if def is DomainDef:
-			text += _generate_doman_class_recursively(def, "", identifiers)
+			text += _generate_domain_class_recursively(def, "", identifiers)
 			text += "\n"
 
 	text += "# ===== Redirect map. =====\n"
@@ -68,9 +68,9 @@ func generate(parse_result: Dictionary[String, RefCounted], redirect_map: Dictio
 			reload_flag[0] = true
 
 		if code_editors.all(func(ce: CodeEdit) -> bool: return ce.get_saved_version() == ce.get_version()):
-			var code_ediors := code_editors.filter(func(ce: CodeEdit) -> bool: return ce.text == old_code)
-			assert(code_ediors.size() >= 0, "异常情况？")
-			if code_ediors.size() == 1:
+			var ce_list := code_editors.filter(func(ce: CodeEdit) -> bool: return ce.text == old_code)
+			assert(ce_list.size() >= 0, "异常情况？")
+			if ce_list.size() == 1:
 				var ce := code_editors[0] as CodeEdit
 				func_reload_text.call(ce, reloaded)
 
@@ -89,7 +89,7 @@ func generate(parse_result: Dictionary[String, RefCounted], redirect_map: Dictio
 
 
 #region Generate
-static func _generate_doman_class_recursively(def: DomainDef, prev_tag: String, r_identifiers: PackedStringArray) -> String:
+static func _generate_domain_class_recursively(def: DomainDef, prev_tag: String, r_identifiers: PackedStringArray) -> String:
 	var domain_text :String
 	if def.redirect.is_empty():
 		domain_text = def.name if prev_tag.is_empty() else ("%s.%s" % [prev_tag, def.name])
@@ -123,7 +123,7 @@ static func _generate_doman_class_recursively(def: DomainDef, prev_tag: String, 
 	ret += "\n"
 
 	for domain: DomainDef in def.sub_domain_list.values():
-		ret += _generate_doman_class_recursively(domain, domain_text, r_identifiers).indent("\t")
+		ret += _generate_domain_class_recursively(domain, domain_text, r_identifiers).indent("\t")
 
 		
 	return ret
