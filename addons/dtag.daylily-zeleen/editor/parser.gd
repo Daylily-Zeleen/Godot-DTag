@@ -1,19 +1,23 @@
-class TagDef:
-	var name : String
-	var desc: String
-	var redirect: String
-
-class DomainDef:
+class EntryDef:
 	var name: String
 	var desc: String
 	var redirect: String
+	func _init() -> void:
+		assert(false, "EntryDef is designed as abstract class, please don't instantiate directly.")
+
+class TagDef extends EntryDef:
+	func _init() -> void: pass
+
+class DomainDef extends EntryDef:
 	var parent_domain: DomainDef
 	var sub_domain_list: Dictionary[String, DomainDef]
 	var tag_list: Dictionary[String, TagDef]
 
+	func _init() -> void: pass
 
-static func parse(text: String, r_err_info: Dictionary[int, String] = {}) -> Dictionary[String, RefCounted]:
-	var ret :Dictionary[String, RefCounted]
+
+static func parse(text: String, r_err_info: Dictionary[int, String] = {}) -> Dictionary[String, EntryDef]:
+	var ret :Dictionary[String, EntryDef]
 	var curr_indent := 0
 	var curr_domain :DomainDef
 

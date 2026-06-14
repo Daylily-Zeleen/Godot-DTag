@@ -19,6 +19,8 @@ extends Resource
 
 const VALUE_ALIAS := &"tag"
 
+const _DTagPaths := preload("dtag_paths.gd")
+
 
 func _get_property_list() -> Array[Dictionary]:
 	var ret :Array[Dictionary] = [
@@ -140,14 +142,29 @@ static func as_domain(p_domain: StringName) -> DTag:
 		return ret
 
 
-static var _dtag_def: GDScript:
-	get:
-		if not is_instance_valid(_dtag_def):
-			_dtag_def = ResourceLoader.load("res://dtag_def.gen.gd", "GDScript", ResourceLoader.CACHE_MODE_REUSE)
-		assert(is_instance_valid(_dtag_def))
-		return _dtag_def
-# Redirect tag.
+static var _redirect_map: Dictionary
+
+## Reload redirect map from JSON file, clearing in-memory caches.
+static func reload_redirect_map() -> void:
+	_redirect_map.clear()
+
+
+## Redirect tag using JSON redirect map.
 static func redirect(ori_tag: StringName) -> StringName:
-	return _dtag_def[&"_REDIRECT_MAP"].get(ori_tag, ori_tag)
+	# Lazy load JSON redirect map
+	if _redirect_map.is_empty() and FileAccess.file_exists(_DTagPaths.DTAG_REDIRECT_FILE):
+		var fa := FileAccess.open(_DTagPaths.DTAG_REDIRECT_FILE, FileAccess.READ)
+		if is_instance_valid(fa):
+			var parsed := JSON.parse_string(fa.get_as_text())
+			if parsed is Dictionary:
+				if Engine.is_editor_hint():
+					return parsed.get(ori_tag, ori_tag) as StringName
+				else:
+					_redirect_map = parsed as Dictionary
+					if _redirect_map.is_empty():
+						const PLACEHOLDER := &"_placeholder_"
+						_redirect_map[PLACEHOLDER] = PLACEHOLDER
+
+	return _redirect_map.get(ori_tag, ori_tag) as StringName
 
 #endregion Static

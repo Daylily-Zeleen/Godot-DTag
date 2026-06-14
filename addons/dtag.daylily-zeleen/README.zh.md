@@ -89,11 +89,15 @@ TagWithoutDomain1 ## Tag without domain1
 
 ```
 
-### Step2: 生成 tag 定义
+### Step2: 生成 DTag 定义
 
-通过 "项目->工具->Generate dtag_def.gen.gd" 即可生成 Tag 的定义代码段，其中 GDScript 用的 "res://dtag_def.gen.gd" 作为编辑器工具的依赖必然会被生成。
+通过 "项目->工具->Generate DTag Definitions" 生成所需的数据文件。
 
-这是由 step1 的 "example.dtag" 生成的脚本.
+> **⚠️ 重要：** 编辑任何 `.dtag` 文件后，必须手动执行此步骤，否则检查器选择器和运行时重定向将不会反映最新的定义。
+
+默认情况下会生成 GDScript 常量文件 `res://dtag_def.gen.gd`（`DTagDef`），方便在代码中直接访问 Tag 常量——这是**默认的代码生成器**。你也可以添加自定义代码生成器来生成其他语言的 DTag 定义（详见[第 4 节](#4-添加自定义的代码生成器)）。
+
+以下是由 step1 的 "example.dtag" 生成的脚本：
 
 ```GDScript
 # res://dtag_def.gen.gd
@@ -154,15 +158,16 @@ const _REDIRECT_MAP: Dictionary[StringName, StringName] = {
 
 ### Step3: 现在你可以直接使用它
 
-现在你可以通过`DTagDef`直接使用它们。
+生成后，可以通过自动生成的 `DTagDef` 类访问 Tag 常量。
 
-```
-
+```GDScript
 func example() -> void:
  print(DTagDef.MainDomain.Tag1)
  print(DTagDef.MainDomain.Domain.Tag2)
 
 ```
+
+此外，你也导出的检查器属性获取 Tag 值，无需依赖 `DTagDef`（详见进阶篇）。
 
 ## 如何使用 (进阶篇)
 
@@ -243,18 +248,23 @@ func example() -> void:
 ![](.doc/CustomCodeGenerators.png)
 
 可以通过项目设置中的 "DTag/basic/code_generators” 选项添加自定义的代码生成器，如生成 DTag 的C#定义脚本等。
-自定义代码生成器必须标记为工具脚本，且拥有一个签名为`func generate(parse_result: Dictionary[String, RefCounted], redirect_map: Dictionary[String, String]) -> String` 的生成函数，返回值为生成的文件路径。
+自定义代码生成器必须标记为工具脚本，且拥有一个签名为`func generate(parse_result: Dictionary[String, EntryDef], redirect_map: Dictionary[String, String]) -> String` 的生成函数，返回值为生成的文件路径。
+
+> `EntryDef` 是 `TagDef` 和 `DomainDef` 的抽象基类，可从 `res://addons/dtag.daylily-zeleen/editor/parser.gd` 导入。
 
 示例：（仅输出解析结果的键作为演示，具体请参考 "res://addons/dtag.daylily-zeleen/generator/gen_dtag_def_gdscript.gd"）
 
 ```GDScript
 # res://example/example_generator.gd
-@tool # Tool annotation is required
+@tool
 
-func generate(parse_result: Dictionary[String, RefCounted], redirect_map: Dictionary[String, String]) -> String:
+const Parser := preload("res://addons/dtag.daylily-zeleen/editor/parser.gd")
+const EntryDef = Parser.EntryDef
+
+
+func generate(parse_result: Dictionary[String, EntryDef], redirect_map: Dictionary[String, String]) -> String:
  for k in parse_result:
   print(k)
 
  return ""
-
 ```

@@ -2,10 +2,11 @@
 extends EditorScript
 
 const Parser := preload("../editor/parser.gd")
+const EntryDef := Parser.EntryDef
 const DomainDef := Parser.DomainDef
 const TagDef := Parser.TagDef
+const _DTagPaths := preload("../script/dtag_paths.gd")
 
-const CACHE_FILE := "res://.godot/editor/dtag_cache.cfg"
 
 func _run() -> void:
 	generate(get_dtag_recursively(), [])
@@ -81,23 +82,23 @@ static func generate(files: PackedStringArray, generators: Array[Object]) -> voi
 			printerr("\t- ", msg)
 		return
 
-	# Redirect
+	# Redirect (auto-redirect sub tags for domain redirect)
 	for def in merge_result.values():
 		if def is DomainDef:
 			_redirect_domain_recursively(def)
 
-	# Gen cache
-	var cache_info := _gen_cache(merge_result)
-
-	# Redirect map
+	# Collect redirect map from parsed definitions
 	var redirect_map: Dictionary[String, String]
-	for tag_text in cache_info:
-		var data := cache_info[tag_text]
-		var redirect := data.get("redirect", "") as String
+	for tag_text in merge_result:
+		var def := merge_result[tag_text]
+		var redirect := def.redirect
 		if not redirect.is_empty():
 			redirect_map[tag_text] = redirect
+		# Collect redirects from nested entries inside domains
+		if def is DomainDef:
+			_collect_redirect_recursively(def, "", redirect_map)
 
-	# Check Cycle redirect and finalize redirect.
+	# Check cycle redirect and finalize redirect.
 	for k in redirect_map:
 		var redirected := redirect_map[k]
 		while redirect_map.has(redirected):
@@ -108,26 +109,29 @@ static func generate(files: PackedStringArray, generators: Array[Object]) -> voi
 			redirected = next
 		redirect_map[k] = redirected
 
-	# Fix redirect.
+	# Fix redirect in definitions
 	for tag_text in merge_result:
 		var def := merge_result[tag_text]
 		if tag_text in redirect_map:
-			var redirect := redirect_map[tag_text]
-			def.redirect = redirect
+			def.redirect = redirect_map[tag_text]
 		if def is DomainDef:
-			_fix_redirect_recursively(def, redirect_map, tag_text)
+			_fix_redirect_recursively(def, redirect_map, "")
+
+	# Gen data files
+	_gen_data_files(merge_result, redirect_map)
 
 	# Generate
 	var generated: PackedStringArray
-	var default_gen := preload("../generator/gen_dtag_def_gdscript.gd").new()
-	generated.push_back(default_gen.generate(merge_result, redirect_map))
 	for g in generators:
 		generated.push_back(g.generate(merge_result, redirect_map))
 
 	# Check redirect target.
+	var entry_texts: PackedStringArray
+	for tag_text in merge_result:
+		_collect_all_entry_texts_recursively(merge_result[tag_text], tag_text, entry_texts)
 	for tag_text in redirect_map:
 		var target := redirect_map[tag_text]
-		if not cache_info.has(target):
+		if not entry_texts.has(target):
 			print_rich("[color=yellow][DTag] Redirect target \"%s\" is not exists.[/color]" % target)
 
 	# Refresh
@@ -136,11 +140,33 @@ static func generate(files: PackedStringArray, generators: Array[Object]) -> voi
 			continue
 		EditorInterface.get_resource_filesystem().update_file(f)
 
+	# Reload redirect map in runtime
+	DTag.reload_redirect_map()
+
 	print("[DTag] Generate completed.")
 
 #region Internal
+static func _collect_redirect_recursively(def: DomainDef, prev_tag: String, r_redirect_map: Dictionary[String, String]) -> void:
+	var domain_text := def.name if prev_tag.is_empty() else ("%s.%s" % [prev_tag, def.name])
+
+	# Check domain redirect
+	if not def.redirect.is_empty():
+		r_redirect_map[domain_text] = def.redirect
+
+	# Check tag redirects
+	for tag_name in def.tag_list:
+		var tag_text := "%s.%s" % [domain_text, tag_name]
+		var tag_def := def.tag_list[tag_name]
+		if not tag_def.redirect.is_empty():
+			r_redirect_map[tag_text] = tag_def.redirect
+
+	# Recurse into sub-domains
+	for sub_def in def.sub_domain_list.values():
+		_collect_redirect_recursively(sub_def, domain_text, r_redirect_map)
+
+
 static func _fix_redirect_recursively(def: DomainDef, redirect_map: Dictionary[String, String], prev_tag := "") -> void:
-	var domain_text := "%s.%s" % [prev_tag, def.name]
+	var domain_text := def.name if prev_tag.is_empty() else ("%s.%s" % [prev_tag, def.name])
 
 	if redirect_map.has(domain_text):
 		def.redirect = redirect_map[domain_text]
@@ -148,8 +174,8 @@ static func _fix_redirect_recursively(def: DomainDef, redirect_map: Dictionary[S
 	for tag_name in def.tag_list:
 		var tag_text := "%s.%s" % [domain_text, tag_name]
 		var tag_def := def.tag_list[tag_name]
-		if redirect_map.has(tag_name):
-			tag_def.redirect = redirect_map[tag_name]
+		if redirect_map.has(tag_text):
+			tag_def.redirect = redirect_map[tag_text]
 
 	for domain_def in def.sub_domain_list.values():
 		_fix_redirect_recursively(domain_def, redirect_map, domain_text)
@@ -166,14 +192,14 @@ static func _redirect_domain_recursively(def: DomainDef) -> void:
 		_redirect_domain_recursively(domain)
 
 
-static func _merge_parse_results(parse_results: Dictionary[String, Dictionary], r_errors: PackedStringArray) -> Dictionary[String, RefCounted]:
-	var ret: Dictionary[String, RefCounted]
+static func _merge_parse_results(parse_results: Dictionary[String, Dictionary], r_errors: PackedStringArray) -> Dictionary[String, EntryDef]:
+	var ret: Dictionary[String, EntryDef]
 	var defined_main_identifier: Dictionary[String, String]
 	var tag_to_file: Dictionary[String, String]
 	for file: String in parse_results:
-		var result := parse_results[file] as Dictionary[String, RefCounted]
+		var result := parse_results[file] as Dictionary[String, EntryDef]
 		for n in result:
-			var def := result[n] as RefCounted
+			var def := result[n] as EntryDef
 			if def is TagDef:
 				if ret.has(n):
 					r_errors.push_back("Tag \"%s\" in \"%s\" is redefined in \"%s\"." % [
@@ -188,7 +214,7 @@ static func _merge_parse_results(parse_results: Dictionary[String, Dictionary], 
 
 
 #region Merge
-static func __get_domain_def(route: Array[String], result: Dictionary[String, RefCounted]) -> DomainDef:
+static func __get_domain_def(route: Array[String], result: Dictionary[String, EntryDef]) -> DomainDef:
 	var ret :DomainDef
 	for i in range(route.size()):
 		var n := route[i]
@@ -201,7 +227,7 @@ static func __get_domain_def(route: Array[String], result: Dictionary[String, Re
 	return ret
 
 
-static func __merge_recursively(file:String, cur_route: Array[String], domain: DomainDef, r_result: Dictionary[String, RefCounted], 
+static func __merge_recursively(file:String, cur_route: Array[String], domain: DomainDef, r_result: Dictionary[String, EntryDef], 
 	r_errors: PackedStringArray,
 	r_tag_to_file: Dictionary[String, String] = {},
 ) -> void:
@@ -253,36 +279,89 @@ static func __add_tag_source_file_recursively(file: String, prev_route: Array[St
 #endregion Merge
 
 
-static func _gen_cache(parse_results: Dictionary[String, RefCounted]) -> Dictionary[String, Dictionary]:
-	var cfg := ConfigFile.new()
+static func _gen_data_files(merge_result: Dictionary[String, EntryDef], redirect_map: Dictionary[String, String]) -> void:
+	# Build tree data
+	var data_dict: Dictionary
+	for def in merge_result.values():
+		if def is DomainDef:
+			data_dict[def.name] = _build_tree_dict(def)
+		elif def is TagDef:
+			data_dict[def.name] = { "type": "tag" }
 
-	var cache_info: Dictionary[String, Dictionary]
-	for def in parse_results.values():
-		_get_cache_info_recursively(def, cache_info)
+	# Write data file (tree structure)
+	var data_dir := _DTagPaths.DTAG_DATA_DIR
+	DirAccess.make_dir_recursive_absolute(data_dir)
+	_write_json(_DTagPaths.DTAG_DATA_FILE, data_dict)
 
-	for def_tag_text in cache_info:
-		var values := cache_info[def_tag_text]
-		for k in values:
-			var v := values[k] as String
-			cfg.set_value(def_tag_text, k, v)
+	# Write redirect file
+	_write_json(_DTagPaths.DTAG_REDIRECT_FILE, redirect_map)
 
-	var err := cfg.save(CACHE_FILE)
-	if err != OK:
-		print_rich("[color=yellow][DTag] generate cache file \"%s\" failed: %s[/color]" % [CACHE_FILE, error_string(err)])
-
-	return cache_info
+	# Build metadata (desc only)
+	var metadata_dict: Dictionary
+	for tag_text in merge_result:
+		var def := merge_result[tag_text]
+		_collect_metadata_recursively(tag_text, def, metadata_dict)
+	_write_json(_DTagPaths.DTAG_META_FILE, metadata_dict)
 
 
-static func _get_cache_info_recursively(def: RefCounted, r_info: Dictionary[String, Dictionary], prev_tag: String = "") -> void:
-	var tag_text := def.name if prev_tag.is_empty() else ("%s.%s" % [prev_tag, def.name]) as String
-	r_info[tag_text] = {
-		desc = def.desc,
-		redirect = def.redirect,
-	}
-
+static func _build_tree_dict(def: EntryDef) -> Dictionary:
+	var node := { "type": "tag" if def is TagDef else "domain" }
 	if def is DomainDef:
-		for tag in def.tag_list.values():
-			_get_cache_info_recursively(tag, r_info, tag_text)
-		for domain in def.sub_domain_list.values():
-			_get_cache_info_recursively(domain, r_info, tag_text)
+		var has_children := false
+		var children: Dictionary
+
+		# Add tag entries
+		if not def.tag_list.is_empty():
+			has_children = true
+			for tag_name in def.tag_list:
+				children[tag_name] = { "type": "tag" }
+
+		# Add sub-domain entries
+		if not def.sub_domain_list.is_empty():
+			has_children = true
+			for name in def.sub_domain_list:
+				children[name] = _build_tree_dict(def.sub_domain_list[name])
+
+		if has_children:
+			node["children"] = children
+	return node
+
+
+static func _write_json(path: String, data: Variant) -> void:
+	var json_str := JSON.stringify(data, "\t")
+	var fa := FileAccess.open(path, FileAccess.WRITE)
+	if not is_instance_valid(fa):
+		printerr("[DTag] Failed to write \"%s\": %s" % [path, error_string(FileAccess.get_open_error())])
+		return
+	fa.store_string(json_str)
+	fa.close()
+
+
+static func _collect_all_entry_texts_recursively(def: EntryDef, prev_tag: String, r_texts: PackedStringArray) -> void:
+	r_texts.push_back(prev_tag)
+	if def is DomainDef:
+		var domain := def as DomainDef
+		for tag_name in domain.tag_list:
+			r_texts.push_back("%s.%s" % [prev_tag, tag_name])
+		for sub_name in domain.sub_domain_list:
+			var sub_text := "%s.%s" % [prev_tag, sub_name]
+			_collect_all_entry_texts_recursively(domain.sub_domain_list[sub_name], sub_text, r_texts)
+
+
+static func _collect_metadata_recursively(tag_text: String, def: EntryDef, r_metadata: Dictionary) -> void:
+	var desc := def.desc
+	if not desc.is_empty():
+		r_metadata[tag_text] = { "desc": desc }
+	if def is DomainDef:
+		var domain := def as DomainDef
+		for tag_name in domain.tag_list:
+			var tag_text_full := "%s.%s" % [tag_text, tag_name]
+			var tag_def := domain.tag_list[tag_name]
+			var tag_desc := tag_def.desc
+			if not tag_desc.is_empty():
+				r_metadata[tag_text_full] = { "desc": tag_desc }
+		for sub_name in domain.sub_domain_list:
+			var sub_def := domain.sub_domain_list[sub_name]
+			var sub_text := "%s.%s" % [tag_text, sub_name]
+			_collect_metadata_recursively(sub_text, sub_def, r_metadata)
 #endregion Internal

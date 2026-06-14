@@ -1,13 +1,15 @@
 @tool
 
 const Parser := preload("../editor/parser.gd")
+const EntryDef := Parser.EntryDef
 const DomainDef := Parser.DomainDef
 const TagDef := Parser.TagDef
 
 const DOMAIN_NAME := "DOMAIN_NAME"
 const GEN_FILE := "res://dtag_def.gen.gd"
 
-func generate(parse_result: Dictionary[String, RefCounted], redirect_map: Dictionary[String, String]) -> String:
+
+func generate(parse_result: Dictionary[String, EntryDef], redirect_map: Dictionary[String, String]) -> String:
 	var old_code := FileAccess.get_file_as_string(GEN_FILE)
 
 	var fa := FileAccess.open(GEN_FILE, FileAccess.WRITE)

@@ -4,10 +4,9 @@ extends ConfirmationDialog
 const _DISABLED_COLOR := Color.DIM_GRAY
 const _REDIRECTED_COLOR := Color.DARK_ORANGE
 const _REDIRECTED_DISABLED_COLOR := Color.CHOCOLATE
+const _DTagPaths := preload("../script/dtag_paths.gd")
 
 signal selected(tag_or_domain: StringName, confirm: bool)
-
-const CACHE_FILE := "res://.godot/editor/dtag_cache.cfg"
 
 @export_group("_internal_", "_")
 @export var _search_line_edit: LineEdit
@@ -30,7 +29,9 @@ var _domain_limitation: StringName:
 var _select_tag: bool
 
 var _leaves_item: Array[TreeItem]
-var _cache_cfg: ConfigFile
+var _data_dict: Dictionary
+var _redirect_dict: Dictionary
+var _metadata_dict: Dictionary
 
 func _ready() -> void:
 	hide()
@@ -46,7 +47,7 @@ func _ready() -> void:
 func _add_item(parent: TreeItem, tag_name: String, is_tag: bool, r_text_ref: Array = []) -> TreeItem:
 	var prev_domain := parent.get_metadata(0) as String
 	var tag_text := tag_name if prev_domain.is_empty() else ("%s.%s" % [prev_domain, tag_name])
-	var redirect := _get_cache_redirect(tag_text, "")
+	var redirect := _lookup_redirect(tag_text, "")
 
 	r_text_ref.clear()
 	r_text_ref.push_back(tag_text)
@@ -57,10 +58,10 @@ func _add_item(parent: TreeItem, tag_name: String, is_tag: bool, r_text_ref: Arr
 	item.set_auto_translate_mode(1, Node.AUTO_TRANSLATE_MODE_DISABLED)
 	item.set_text(0, tag_text)
 	item.set_metadata(0, tag_text)
-	item.set_tooltip_text(0, _get_cache_desc(tag_text, tag_text))
+	item.set_tooltip_text(0, _lookup_desc(tag_text, tag_text))
 
 	item.set_text(1, redirect)
-	item.set_tooltip_text(1, _get_cache_desc(redirect, redirect))
+	item.set_tooltip_text(1, _lookup_desc(redirect, redirect))
 	item.set_custom_color(1, Color.DARK_GRAY)
 	item.set_selectable(1, not redirect.is_empty())
 	item.set_metadata(1, redirect)
@@ -115,18 +116,14 @@ func setup(p_selected: StringName, domain_limitation: PackedStringArray, select_
 	root.set_metadata(0, "")
 	root.set_tooltip_text(0, "")
 
-	const DEF_CLASS := &"DTagDef"
-	var def_class_path: String = ""
-	for class_info in ProjectSettings.get_global_class_list():
-		if class_info.class == DEF_CLASS:
-			def_class_path = class_info.path
+	# Load data files
+	_data_dict = _load_json_dict(_DTagPaths.DTAG_DATA_FILE)
+	_redirect_dict = _load_json_dict(_DTagPaths.DTAG_REDIRECT_FILE)
+	_metadata_dict = _load_json_dict(_DTagPaths.DTAG_META_FILE)
 
-	_cache_cfg = ConfigFile.new()
-	_cache_cfg.load(CACHE_FILE)
-
-	if not def_class_path.is_empty():
-		var def_script := load(def_class_path) as Script
-		_setup_item_recursively(root, def_script)
+	# Build tree from data
+	if not _data_dict.is_empty():
+		_setup_item_from_data(root, _data_dict)
 
 	if not _domain_limitation.is_empty() and _tree.get_root().get_child_count() == 0:
 		print_rich("[color=yellow][DTag]: domain limitation \"%s\" is not exists in this project.[/color]" % [_domain_limitation])
@@ -134,62 +131,65 @@ func setup(p_selected: StringName, domain_limitation: PackedStringArray, select_
 	popup_centered_ratio(0.6)
 
 
-func _get_cache_desc(tag_text: String, default: String) -> String:
-	assert(is_instance_valid(_cache_cfg))
-	var ret := _cache_cfg.get_value(tag_text, "desc", "") as String
-	if ret.is_empty():
-		return default
-	return ret
+static func _load_json_dict(path: String) -> Dictionary:
+	var text := FileAccess.get_file_as_string(path)
+	if FileAccess.get_open_error() != OK:
+		return {}
+	var parsed := JSON.parse_string(text)
+	if parsed is Dictionary:
+		return parsed as Dictionary
+	return {}
 
 
-func _get_cache_redirect(tag_text: String, default: String) -> String:
-	var redirected := DTag.redirect(tag_text)
-	if tag_text == redirected:
+func _lookup_desc(tag_text: String, default: String) -> String:
+	if _metadata_dict.has(tag_text):
+		var entry := _metadata_dict[tag_text] as Dictionary
+		var desc := entry.get("desc", "") as String
+		if not desc.is_empty():
+			return desc
+	return default
+
+
+func _lookup_redirect(tag_text: String, default: String) -> String:
+	var redirected := _redirect_dict.get(tag_text, "") as String
+	if redirected.is_empty():
 		return default
 	return redirected
 
 
-func _setup_item_recursively(parent: TreeItem, def: Script) -> void:
-	var const_map := def.get_script_constant_map()
+func _setup_item_from_data(parent: TreeItem, data_dict: Dictionary) -> void:
 	var prev_domain := parent.get_metadata(0) as String
 
-	# 排序(同一层级下被重定向的目标滞后)
-	var keys :Array[StringName]
-	var redirected_keys: Array[StringName]
-	for k: String in const_map:
-		if k in [&"DOMAIN_NAME", &"_REDIRECT_MAP"]:
-			continue
-
-		var next_def: Variant = const_map[k]
-		
-		var tag_text := k if prev_domain.is_empty() else ("%s.%s" % [prev_domain, k])
-		var redirect := _get_cache_redirect(tag_text, "")
+	# Sort: non-redirected first, redirected last
+	var keys: Array[String]
+	var redirected_keys: Array[String]
+	for k in data_dict.keys():
+		var tag_text: String = k if prev_domain.is_empty() else ("%s.%s" % [prev_domain, k])
+		var redirect := _lookup_redirect(tag_text, "")
 		if redirect.is_empty():
 			keys.push_back(k)
 		else:
 			redirected_keys.push_back(k)
 
-	var func_add := func(k: StringName) -> void:
-		var next_def: Variant = const_map[k]
-		var tag_text := k if prev_domain.is_empty() else ("%s.%s" % [prev_domain, k])
-		var redirect := _get_cache_redirect(tag_text, "")
-		var is_tag := typeof(next_def) == TYPE_STRING_NAME
-		assert(is_tag or (next_def is Script and next_def.is_abstract()))
-		var item := _add_item(parent, k, typeof(next_def) == TYPE_STRING_NAME)
+	var func_add := func(k: String) -> void:
+		var entry := data_dict[k] as Dictionary
+		var is_tag: bool = entry.get("type", "") == "tag"
+		var item := _add_item(parent, k, is_tag)
 
-		if not is_tag:
-			_setup_item_recursively(item, next_def)
+		if not is_tag and entry.has("children"):
+			var children := entry["children"] as Dictionary
+			if not children.is_empty():
+				_setup_item_from_data(item, children)
 
-	# 将被重定向的对象滞后
+	# Add non-redirected first, then redirected
 	for k in keys:
 		func_add.call(k)
 	for k in redirected_keys:
 		func_add.call(k)
 
-	# 过滤与记录
+	# Filter and record leaves
 	for item in parent.get_children():
 		if _is_incompatible_with_limitation(item):
-			# 过滤命名空间限制
 			item.free()
 			continue
 		if item.get_child_count() <= 0:

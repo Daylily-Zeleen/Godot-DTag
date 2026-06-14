@@ -32,6 +32,7 @@ class EditorInspectorPluginTag extends EditorInspectorPlugin:
 
 var _selector: Window
 var _inspector_plugin: EditorInspectorPluginTag
+var _export_plugin: EditorExportPlugin
 var _highlighter := preload("editor/dtag_syntax_highlighter.gd").new()
 
 const EDITOR_SETTING_TEXTFILE_EXTENSIONS := "docks/filesystem/textfile_extensions"
@@ -41,9 +42,10 @@ const SETTINGS_CODE_GENERATOR := "DTag/basic/code_generators"
 
 func _enter_tree() -> void:
 	# Setting code generators
+	var default_generators := PackedStringArray(["res://addons/dtag.daylily-zeleen/generator/gen_dtag_def_gdscript.gd"])
 	if not ProjectSettings.has_setting(SETTINGS_CODE_GENERATOR):
-		ProjectSettings.set_setting(SETTINGS_CODE_GENERATOR, PackedStringArray())
-	ProjectSettings.set_initial_value(SETTINGS_CODE_GENERATOR, PackedStringArray())
+		ProjectSettings.set_setting(SETTINGS_CODE_GENERATOR, default_generators)
+	ProjectSettings.set_initial_value(SETTINGS_CODE_GENERATOR, default_generators)
 	ProjectSettings.set_as_basic(SETTINGS_CODE_GENERATOR, true)
 	var property_info = {
 		"name": SETTINGS_CODE_GENERATOR,
@@ -73,7 +75,10 @@ func _enter_tree() -> void:
 	_inspector_plugin = EditorInspectorPluginTag.new(_selector)
 	add_inspector_plugin(_inspector_plugin)
 
-	add_tool_menu_item("Generate dtag_def.gen.gd", _on_generate_dtag_def_gen_requested)
+	_export_plugin = preload("editor/dtag_export_plugin.gd").new()
+	add_export_plugin(_export_plugin)
+
+	add_tool_menu_item("Generate DTag Definitions", _on_generate_dtag_def_gen_requested)
 
 	EditorInterface.get_script_editor().register_syntax_highlighter(_highlighter)
 
@@ -81,7 +86,10 @@ func _enter_tree() -> void:
 func _exit_tree() -> void:
 	remove_inspector_plugin(_inspector_plugin)
 
-	remove_tool_menu_item("Generate dtag_def.gen.gd")
+	remove_export_plugin(_export_plugin)
+	_export_plugin = null
+
+	remove_tool_menu_item("Generate DTag Definitions")
 
 	EditorInterface.get_script_editor().unregister_syntax_highlighter(_highlighter)
 
